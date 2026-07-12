@@ -2,134 +2,154 @@
 <html lang="uz">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
-    <title>Kage Translate</title>
+    <title>Kage Translate</title>
 
-    <meta name="theme-color"
-          content="#161311">
+    <meta name="theme-color"
+          content="#161311">
 
-    <link rel="manifest"
-          href="manifest.json">
+    <link rel="manifest"
+          href="manifest.json">
 
-    <link rel="stylesheet"
-          href="style.css">
+    <link rel="stylesheet"
+          href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 
 <body>
 
-    <header>
+    <header>
 
-        <h1>
-            <span>Kage</span> Translate
-        </h1>
+        <h1>
+            <span>Kage</span> Translate
+        </h1>
 
-        <p>
-            Manga va Manhwa tarjima platformasi
-        </p>
+        <p>
+            Manga va Manhwa tarjima platformasi
+        </p>
 
-    </header>
+    </header>
 
-    <main>
+    <main>
 
-        <!-- Til -->
+        <!-- Til -->
 
-        <section class="card">
+        <section class="card">
 
-            <h2>Til tanlash</h2>
+            <h2>Til tanlash</h2>
 
-            <button id="englishBtn">
-                Inglizcha
-            </button>
+            <button id="englishBtn"
+        onclick="setSourceLanguage('en')">
 
-            <button id="russianBtn">
-                Ruscha
-            </button>
+    🇺🇸 Inglizcha
 
-        </section>
+</button>
 
+<button id="russianBtn"
+        onclick="setSourceLanguage('ru')">
 
-        <!-- Shrift -->
+    🇷🇺 Ruscha
 
-        <section class="card">
+</button>
 
-            <h2>Shrift</h2>
-
-            <button>
-                Oddiy
-            </button>
-
-            <button>
-                Manga
-            </button>
-
-            <button>
-                Handwritten
-            </button>
-
-        </section>
+        </section>
 
 
-        <!-- Fayl -->
+        <!-- Shrift -->
 
-        <section class="card">
+        <section class="card">
 
-            <h2>Fayl yuklash</h2>
+            <h2>Shrift</h2>
 
-            <input
-                type="file"
-                id="fileInput"
-                multiple>
+            <button onclick="setFont('normal')">
+    Oddiy
+</button>
 
-        </section>
+<button onclick="setFont('manga')">
+    Manga
+</button>
 
+<button onclick="setFont('handwritten')">
+    Handwritten
+</button>
 
-        <!-- Boshlash -->
-
-        <section class="card">
-
-            <button id="startButton">
-
-                Tarjima qilish
-
-            </button>
-
-        </section>
+        </section>
 
 
-        <!-- Holat -->
+        <!-- Fayl -->
 
-        <section class="card">
+        <section class="card">
 
-            <h2>Holati</h2>
+            <h2>Fayl yuklash</h2>
 
-            <p id="status">
+            <input
+    type="file"
+    id="pdfInput"
+    accept=".pdf,.png,.jpg,.jpeg,.webp"
+    multiple>
 
-                Fayl tanlanmagan
-
-            </p>
-
-        </section>
+        </section>
 
 
-        <!-- Natija -->
+        <!-- Boshlash -->
 
-        <section class="card">
+        <section class="card">
 
-            <h2>Natija</h2>
+            <button
+    id="goBtn"
+    onclick="startTranslation()"
+    disabled>
 
-            <div id="result">
+    Tarjima qilishni boshlash
 
-            </div>
+</button>
 
-        </section>
+        </section>
 
-    </main>
 
-    <script src="main.js"></script>
+        <!-- Holat -->
+
+        <section class="card">
+
+            <h2>Holati</h2>
+
+            <p id="statusText">
+
+    Fayl tanlanmagan
+
+</p> 
+        </section>
+
+
+        <!-- Natija -->
+
+        <section class="card">
+
+            <h2>Natija</h2>
+
+            <div id="results">
+
+    <p>
+
+        Hozircha natija yo'q.
+
+    </p>
+
+</div>
+
+        </section>
+
+    </main>
+
+    <script src="main.js"></script>
 
 </body>
 
-                            </html>
+</html>
