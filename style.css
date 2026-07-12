@@ -1,82 +1,54 @@
 /* =========================================
-   Kage Translate
-   style.css
+   Kage Translate
+   style.css
 ========================================= */
 
 /* RESET */
 
 *{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
 }
 
 /* BODY */
 
 body{
 
-    background:#f4efe6;
+    background:#f4efe6;
 
-    color:#161311;
+    color:#161311;
 
-    font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
+    font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
 
-    line-height:1.6;
+    line-height:1.6;
 
-    max-width:100%;
-    overflow-x:hidden;
+    max-width:100%;
+    overflow-x:hidden;
 
 }
 /* HEADER */
 
 header{
-
     background:#ffffff;
-
     border-bottom:4px solid #161311;
-
     padding:25px;
-
     text-align:center;
-
 }
 
 header h1{
-
     font-size:40px;
-
-    margin-bottom:10px;
-
-}
-
-header p{
-
-    color:#666;
-
-    font-size:18px;
-
-}
-
-/* LOGO */
-
-header h1{
-
-    font-size:38px;
-
     font-weight:bold;
-
+    margin-bottom:10px;
 }
-
-/* Kage */
 
 header h1 span{
-
     color:#c0392b;
-
 }
+
 
 /* TAGLINE */
 
@@ -87,5 +59,131 @@ header p{
     color:#666666;
 
     font-size:16px;
+
+}
+
+/* MAIN */
+
+main{
+
+    max-width:900px;
+
+    margin:30px auto;
+
+    padding:20px;
+
+}
+
+/* CARD */
+
+.card{
+
+    background:#ffffff;
+
+    border:2px solid #dddddd;
+
+    border-radius:15px;
+
+    padding:20px;
+
+    margin-bottom:20px;
+
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+
+}
+
+/* CARD TITLE */
+
+.card h2{
+
+    font-size:20px;
+
+    color:#161311;
+
+    margin-bottom:15px;
+
+}
+
+/* BUTTON */
+
+button{
+
+    width:100%;
+
+    padding:15px;
+
+    border:none;
+
+    border-radius:10px;
+
+    background:#c0392b;
+
+    color:#ffffff;
+
+    font-size:16px;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+    transition:0.3s;
+
+    margin-top:10px;
+
+}
+
+button:hover{
+
+    background:#962d22;
+
+}
+
+/* FILE INPUT */
+
+input[type="file"]{
+
+    width:100%;
+
+    padding:15px;
+
+    border:2px dashed #c0392b;
+
+    border-radius:10px;
+
+    background:#faf7f2;
+
+    font-size:15px;
+
+    cursor:pointer;
+
+}
+
+/* STATUS */
+
+#status{
+
+    margin-top:15px;
+
+    font-size:15px;
+
+    color:#555555;
+
+}
+
+/* RESULT */
+
+#result{
+
+    margin-top:20px;
+
+    min-height:150px;
+
+    border:2px dashed #cccccc;
+
+    border-radius:10px;
+
+    padding:20px;
+
+    background:#fafafa;
 
 }
