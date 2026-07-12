@@ -1,1 +1,73 @@
+/* =========================================
+   Kage Translate
+   style.css
+========================================= */
 
+/* RESET */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+/* BODY */
+
+body{
+
+    background:#f4efe6;
+
+    color:#161311;
+
+    font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+    line-height:1.6;
+
+}
+
+/* HEADER */
+
+header{
+
+    background:#ffffff;
+
+    border-bottom:4px solid #161311;
+
+    padding:25px;
+
+    text-align:center;
+
+}
+
+/* LOGO */
+
+header h1{
+
+    font-size:38px;
+
+    font-weight:bold;
+
+}
+
+/* Kage */
+
+header h1 span{
+
+    color:#c0392b;
+
+}
+
+/* TAGLINE */
+
+header p{
+
+    margin-top:10px;
+
+    color:#666666;
+
+    font-size:16px;
+
+}
