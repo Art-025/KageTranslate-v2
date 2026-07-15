@@ -36,6 +36,8 @@ const goButton = document.getElementById("goBtn");
 
 const resultArea = document.getElementById("results");
 
+const progressBar = document.getElementById("progressBar");
+
 // ======================================
 // APP START
 // ======================================
@@ -113,47 +115,39 @@ async function startTranslation(){
 
 // Eski natijalarni tozalash
 resultArea.innerHTML = "";
+progressBar.style.width = "0%";
+progressBar.textContent = "0%";
 
 // Eski tarjima cache ni tozalash
 translationCache = {};
 
  try {
 
-    for (const file of selectedFiles) {
+    for (const file of selectedFiles) {
 
-        if (file.type === "application/pdf") {
+        if (file.type === "application/pdf") {
+            await processPdf(file);
+        }
+        else if (file.type.startsWith("image/")) {
+            await processImage(file);
+        }
+        else {
+            console.log("Qo'llab-quvvatlanmaydigan fayl:", file.name);
+        }
 
-            await processPdf(file);
+    }
 
-        }
+    statusText.textContent = "Fayllar tekshirildi.";
 
-        else if (file.type.startsWith("image/")) {
+}
+finally {
 
-            await processImage(file);
+    goButton.disabled = false;
 
-        }
-
-        else {
-
-            console.log("Qo'llab-quvvatlanmaydigan fayl:", file.name);
-
-        }
-
-    }
-
-    statusText.textContent = "Fayllar tekshirildi.";
-
-} finally {
-
-    goButton.disabled = false;
-
-    if (ocrWorker !== null) {
-
-        await ocrWorker.terminate();
-
-        ocrWorker = null;
-
-    }
+    if (ocrWorker !== null) {
+        await ocrWorker.terminate();
+        ocrWorker = null;
+    }
 
 }
 
@@ -163,18 +157,28 @@ translationCache = {};
 
 async function readPdf(file){
 
-    const arrayBuffer = await file.arrayBuffer();
+    try{
 
-    const pdf = await pdfjsLib.getDocument({
+        const arrayBuffer = await file.arrayBuffer();
 
-        data: arrayBuffer
+        const pdf = await pdfjsLib.getDocument({
+            data: arrayBuffer
+        }).promise;
 
-    }).promise;
-
-    statusText.textContent =
+        statusText.textContent =
         `${pdf.numPages} ta sahifa topildi.`;
 
-    return pdf;
+        return pdf;
+
+    }catch(error){
+
+        console.error("PDF Error:", error);
+
+        alert("PDF faylni o'qib bo'lmadi.");
+
+        return null;
+
+    }
 
 }
 
@@ -188,15 +192,25 @@ function readImage(file){
 
         const image = new Image();
 
+        const imageUrl = URL.createObjectURL(file);
+
         image.onload = ()=>{
+
+            URL.revokeObjectURL(imageUrl);
 
             resolve(image);
 
         };
 
-        image.onerror = reject;
+        image.onerror = ()=>{
 
-        image.src = URL.createObjectURL(file);
+            URL.revokeObjectURL(imageUrl);
+
+            reject(new Error("Rasmni yuklab bo'lmadi."));
+
+        };
+
+        image.src = imageUrl;
 
     });
 
@@ -226,14 +240,27 @@ async function initOcrWorker(){
 
 async function recognizeText(image){
 
-    statusText.textContent =
-    "Matn aniqlanmoqda...";
+    statusText.textContent = "Matn aniqlanmoqda...";
 
     await initOcrWorker();
 
-  const result = await ocrWorker.recognize(image);
+    const { data } = await ocrWorker.recognize(image, {
+        logger: (m) => {
 
-    return result.data;
+            if (m.status === "recognizing text") {
+
+                const percent = Math.round(m.progress * 100);
+
+                progressBar.style.width = percent + "%";
+
+                progressBar.textContent = percent + "%";
+
+            }
+
+        }
+    });
+
+    return data;
 
 }
 
@@ -310,6 +337,10 @@ async function processPdf(file){
 
     const pdf = await readPdf(file);
 
+if(pdf === null){
+    return;
+}
+
     for(let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++){
 
         statusText.textContent =
@@ -344,6 +375,12 @@ const translated = await translateText(textData.text);
 
 console.log(translated);
 
+const percent = Math.round((pageNumber / pdf.numPages) * 100);
+
+progressBar.style.width = percent + "%";
+
+progressBar.textContent = percent + "%";
+
 resultArea.innerHTML += `
 <div class="card">
 
@@ -362,6 +399,11 @@ resultArea.innerHTML += `
 </div>
 `;
 
+// Canvas xotirasini bo'shatish
+canvas.width = 0;
+canvas.height = 0;
+page.cleanup();
+
     }
 
 }
@@ -376,11 +418,16 @@ async function processImage(file){
 
     const textData = await recognizeText(image);
 
-    console.log(textData.text);
+    console.log(
+textData.text);
 
     const translated = await translateText(textData.text);
 
     console.log(translated);
+
+progressBar.style.width = "100%";
+
+progressBar.textContent = "100%";
 
 resultArea.innerHTML += `
 <div class="card">
@@ -398,6 +445,7 @@ resultArea.innerHTML += `
 <p>${translated}</p>
 
 </div>
+
 `;
 
 }
