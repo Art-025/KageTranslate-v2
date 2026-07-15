@@ -46,16 +46,16 @@
             <h2>Til tanlash</h2>
 
             <button id="englishBtn"
-        onclick="setSourceLanguage('en')">
+        onclick="setSourceLanguage('en')">
 
-    🇺🇸 Inglizcha
+    🇺🇸 Inglizcha
 
 </button>
 
 <button id="russianBtn"
-        onclick="setSourceLanguage('ru')">
+        onclick="setSourceLanguage('ru')">
 
-    🇷🇺 Ruscha
+    🇷🇺 Ruscha
 
 </button>
 
@@ -69,15 +69,15 @@
             <h2>Shrift</h2>
 
             <button onclick="setFont('normal')">
-    Oddiy
+    Oddiy
 </button>
 
 <button onclick="setFont('manga')">
-    Manga
+    Manga
 </button>
 
 <button onclick="setFont('handwritten')">
-    Handwritten
+    Handwritten
 </button>
 
         </section>
@@ -90,10 +90,10 @@
             <h2>Fayl yuklash</h2>
 
             <input
-    type="file"
-    id="pdfInput"
-    accept=".pdf,.png,.jpg,.jpeg,.webp"
-    multiple>
+    type="file"
+    id="pdfInput"
+    accept=".pdf,.png,.jpg,.jpeg,.webp"
+    multiple>
 
         </section>
 
@@ -103,11 +103,11 @@
         <section class="card">
 
             <button
-    id="goBtn"
-    onclick="startTranslation()"
-    disabled>
+    id="goBtn"
+    onclick="startTranslation()"
+    disabled>
 
-    Tarjima qilishni boshlash
+    Tarjima qilishni boshlash
 
 </button>
 
@@ -122,9 +122,16 @@
 
             <p id="statusText">
 
-    Fayl tanlanmagan
+        Fayl tanlanmagan
 
-</p> 
+</p> 
+
+<div class="progress">
+
+    <div id="progressBar"></div>
+
+</div>
+
         </section>
 
 
@@ -136,11 +143,11 @@
 
             <div id="results">
 
-    <p>
+    <p>
 
-        Hozircha natija yo'q.
+        Hozircha natija yo'q.
 
-    </p>
+    </p>
 
 </div>
 
