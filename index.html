@@ -2,21 +2,36 @@
 <html lang="uz">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
-    <title>Kage Translate</title>
+    <title>Kage Translate</title>
 
-    <meta name="theme-color"
-          content="#161311">
+    <meta name="theme-color"
+          content="#161311">
 
-    <link rel="manifest"
-          href="manifest.json">
+    <link rel="manifest"
+          href="manifest.json">
 
-    <link rel="stylesheet"
-          href="style.css">
+    <!-- Fayllar mavjudligini repo'da tekshiring -->
+    <link rel="icon" href="icon.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link rel="stylesheet"
+          href="style.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@600&display=swap" rel="stylesheet">
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<script>
+    // MUHIM: workerSrc ko'rsatilmasa PDF.js hech qanday PDF'ni ocholmaydi.
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
 
@@ -25,138 +40,186 @@
 
 <body>
 
-    <header>
+    <noscript>
+        Bu sayt ishlashi uchun brauzeringizda JavaScript yoqilgan bo'lishi kerak.
+    </noscript>
 
-        <h1>
-            <span>Kage</span> Translate
-        </h1>
+    <header>
 
-        <p>
-            Manga va Manhwa tarjima platformasi
-        </p>
+        <h1>
+            <span>Kage</span> Translate
+        </h1>
 
-    </header>
+        <p>
+            Manga • Manhwa • PDF • Rasm tarjimoni
+        </p>
 
-    <main>
+    </header>
 
-        <!-- Til -->
+    <main>
 
-        <section class="card">
+        <!-- Original til -->
 
-            <h2>Til tanlash</h2>
+        <section class="card">
 
-            <button id="englishBtn"
-        onclick="setSourceLanguage('en')">
+            <h2>Original til</h2>
 
-    🇺🇸 Inglizcha
+            <button type="button"
+        id="englishBtn"
+        onclick="setSourceLanguage('en', this)">
 
-</button>
-
-<button id="russianBtn"
-        onclick="setSourceLanguage('ru')">
-
-    🇷🇺 Ruscha
+    🇺🇸 Inglizcha
 
 </button>
 
-        </section>
+<button type="button"
+        id="russianBtn"
+        onclick="setSourceLanguage('ru', this)">
 
-
-        <!-- Shrift -->
-
-        <section class="card">
-
-            <h2>Shrift</h2>
-
-            <button onclick="setFont('normal')">
-    Oddiy
-</button>
-
-<button onclick="setFont('manga')">
-    Manga
-</button>
-
-<button onclick="setFont('handwritten')">
-    Handwritten
-</button>
-
-        </section>
-
-
-        <!-- Fayl -->
-
-        <section class="card">
-
-            <h2>Fayl yuklash</h2>
-
-            <input
-    type="file"
-    id="pdfInput"
-    accept=".pdf,.png,.jpg,.jpeg,.webp"
-    multiple>
-
-        </section>
-
-
-        <!-- Boshlash -->
-
-        <section class="card">
-
-            <button
-    id="goBtn"
-    onclick="startTranslation()"
-    disabled>
-
-    Tarjima qilishni boshlash
+    🇷🇺 Ruscha
 
 </button>
 
-        </section>
+        </section>
 
 
-        <!-- Holat -->
+        <!-- Tarjima tili -->
 
-        <section class="card">
+        <section class="card">
 
-            <h2>Holati</h2>
+            <h2>Tarjima tili</h2>
 
-            <p id="statusText">
+            <button type="button"
+        id="targetUzBtn"
+        onclick="setTargetLanguage('uz', this)">
+
+    🇺🇿 O'zbekcha
+
+</button>
+
+<button type="button"
+        id="targetRuBtn"
+        onclick="setTargetLanguage('ru', this)">
+
+    🇷🇺 Ruscha
+
+</button>
+
+<button type="button"
+        id="targetEnBtn"
+        onclick="setTargetLanguage('en', this)">
+
+    🇺🇸 Inglizcha
+
+</button>
+
+        </section>
+
+
+        <!-- Shrift -->
+
+        <section class="card">
+
+            <h2>Shrift</h2>
+
+            <button type="button" onclick="setFont('normal', this)">
+    Oddiy
+</button>
+
+<button type="button" onclick="setFont('manga', this)">
+    Manga
+</button>
+
+<button type="button" onclick="setFont('handwritten', this)">
+    Handwritten
+</button>
+
+        </section>
+
+
+        <!-- Fayl -->
+
+        <section class="card">
+
+            <h2>Fayl yuklash</h2>
+
+            <input
+    type="file"
+    id="pdfInput"
+    accept=".pdf,.png,.jpg,.jpeg,.webp"
+    multiple>
+
+        </section>
+
+
+        <!-- Boshlash -->
+
+        <section class="card">
+
+            <button
+    type="button"
+    id="goBtn"
+    onclick="startTranslation()"
+    disabled>
+
+    Tarjima qilishni boshlash
+
+</button>
+
+        </section>
+
+
+        <!-- Holat -->
+
+        <section class="card">
+
+            <h2>Holati</h2>
+
+            <p id="statusText">
 
         Fayl tanlanmagan
 
-</p> 
+</p>
+
+<div id="loadingSpinner" class="spinner" hidden></div>
 
 <div class="progress">
 
-    <div id="progressBar"></div>
+    <div
+        id="progressBar"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0">
+    </div>
 
 </div>
 
-        </section>
+        </section>
 
 
-        <!-- Natija -->
+        <!-- Natija -->
 
-        <section class="card">
+        <section class="card">
 
-            <h2>Natija</h2>
+            <h2>Natija</h2>
 
-            <div id="results">
+            <div id="results">
 
-    <p>
+    <p>
 
-        Hozircha natija yo'q.
+        Hozircha natija yo'q.
 
-    </p>
+    </p>
 
 </div>
 
-        </section>
+        </section>
 
-    </main>
+    </main>
 
-    <script src="main.js"></script>
+    <script src="main.js"></script>
 
 </body>
 
-</html>
+                    </html>
