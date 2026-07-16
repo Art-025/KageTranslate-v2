@@ -80,6 +80,28 @@ const ROW_THRESHOLD_BASE = 20;
 // Matn qatlamida qator deb hisoblash uchun y-koordinata farqi tolerantligi
 const TEXT_LAYER_Y_TOLERANCE = 2;
 
+// ---- Tarjimani rasm/PDF ustiga chizish uchun sozlamalar ----
+
+// Original matn o'rnini "tozalash" uchun fon rangi (haqiqiy bubble fonini
+// aniqlamaymiz, shuning uchun oq eng ko'p uchraydigan holat sifatida tanlangan)
+const TEXT_OVERLAY_BG = "#ffffff";
+
+const TEXT_OVERLAY_TEXT_COLOR = "#111111";
+
+const MIN_OVERLAY_FONT_SIZE = 10;
+
+const MAX_OVERLAY_FONT_SIZE = 42;
+
+// selectedFont qiymatiga mos canvas shrift satrlari
+const OVERLAY_FONT_MAP = {
+    normal: "Arial, Helvetica, sans-serif",
+    manga: "'Bangers', 'Arial Black', Impact, sans-serif",
+    handwritten: "'Caveat', 'Comic Sans MS', cursive"
+};
+
+// Chiqarilgan sahifa rasmlari uchun JPEG sifati (0-1)
+const OUTPUT_IMAGE_QUALITY = 0.92;
+
 // ======================================
 // GLOBAL VARIABLES
 // ======================================
@@ -98,6 +120,10 @@ let ocrWorker = null;
 
 let ocrWorkerLanguage = null;
 
+// Har bir tarjima qilingan sahifa/rasmning yakuniy tasviri shu yerda yig'iladi
+// (yangi PDF yaratish va ulashish uchun ishlatiladi)
+let translatedPageImages = [];
+
 // ======================================
 // DOM ELEMENTS
 // ======================================
@@ -112,6 +138,14 @@ const resultArea = document.getElementById("results");
 
 const progressBar = document.getElementById("progressBar");
 
+const loadingSpinner = document.getElementById("loadingSpinner");
+
+const downloadButton = document.getElementById("downloadBtn");
+
+const shareButton = document.getElementById("shareBtn");
+
+const GO_BUTTON_DEFAULT_LABEL = "Tarjima qilishni boshlash";
+
 // ======================================
 // APP START
 // ======================================
@@ -119,6 +153,15 @@ const progressBar = document.getElementById("progressBar");
 window.addEventListener("load", () => {
 
     log("Kage Translate Started");
+
+    const defaultEnglishBtn = document.getElementById("englishBtn");
+    if(defaultEnglishBtn) setActiveButton(defaultEnglishBtn);
+
+    const defaultTargetBtn = document.getElementById("targetUzBtn");
+    if(defaultTargetBtn) setActiveButton(defaultTargetBtn);
+
+    const defaultFontBtn = document.querySelector('button[onclick*="setFont(\'manga\'"]');
+    if(defaultFontBtn) setActiveButton(defaultFontBtn);
 
 });
 
@@ -209,6 +252,8 @@ function updateOverallProgress(itemIndex, totalItems, itemFraction){
     progressBar.style.width = percent + "%";
 
     progressBar.textContent = percent + "%";
+
+    progressBar.setAttribute("aria-valuenow", percent);
 
 }
 
@@ -349,7 +394,10 @@ if(fileInput){
 
             setStatus(`${selectedFiles.length} ta fayl tanlandi.`);
 
-            if(goButton) goButton.disabled = false;
+            if(goButton){
+                goButton.disabled = false;
+                goButton.textContent = GO_BUTTON_DEFAULT_LABEL;
+            }
 
         }else{
 
@@ -363,29 +411,50 @@ if(fileInput){
 
 }
 
+// Bosilgan tugmani "active" qilib, shu guruhdagi boshqalarini tozalash
+function setActiveButton(buttonEl){
+
+    if(!buttonEl) return;
+
+    const group = buttonEl.parentElement;
+
+    if(!group) return;
+
+    group.querySelectorAll("button").forEach((btn) => btn.classList.remove("active"));
+
+    buttonEl.classList.add("active");
+
+}
+
 // ======================================
 // LANGUAGE / FONT SETTINGS
 // ======================================
 
-function setSourceLanguage(language){
+function setSourceLanguage(language, buttonEl){
 
     sourceLanguage = language;
+
+    setActiveButton(buttonEl);
 
     log("Original til:", sourceLanguage);
 
 }
 
-function setTargetLanguage(language){
+function setTargetLanguage(language, buttonEl){
 
     targetLanguage = language;
+
+    setActiveButton(buttonEl);
 
     log("Tarjima tili:", targetLanguage);
 
 }
 
-function setFont(fontName){
+function setFont(fontName, buttonEl){
 
     selectedFont = fontName;
+
+    setActiveButton(buttonEl);
 
     log("Font:", selectedFont);
 
@@ -407,13 +476,19 @@ async function startTranslation(){
 
     setStatus("Tarjima tayyorlanmoqda...");
 
-    if(goButton) goButton.disabled = true;
+    if(goButton){
+        goButton.disabled = true;
+        goButton.textContent = "Tarjima qilinmoqda...";
+    }
+
+    if(loadingSpinner) loadingSpinner.hidden = false;
 
     if(resultArea) resultArea.innerHTML = "";
 
     if(progressBar){
         progressBar.style.width = "0%";
         progressBar.textContent = "0%";
+        progressBar.setAttribute("aria-valuenow", "0");
     }
 
     translationCache = new Map();
@@ -442,7 +517,9 @@ async function startTranslation(){
 
         }
 
-        setStatus("Fayllar tekshirildi.");
+        setStatus("Tarjima yakunlandi.");
+
+        if(goButton) goButton.textContent = "Tarjima tugadi ✅";
 
     }
     catch(error){
@@ -451,14 +528,18 @@ async function startTranslation(){
 
         setStatus("Xatolik yuz berdi. Konsolni tekshiring.");
 
+        if(goButton) goButton.textContent = "Xatolik yuz berdi";
+
     }
     finally {
 
         if(goButton) goButton.disabled = false;
 
+        if(loadingSpinner) loadingSpinner.hidden = true;
+
     }
 
-      }
+}
 
 // ======================================
 // READ PDF FILE
@@ -591,7 +672,7 @@ function readImage(file){
 
     });
 
-}
+                                          }
 
 // ======================================
 // INIT OCR WORKER (sessiya davomida qayta ishlatiladi)
@@ -1260,4 +1341,4 @@ async function processImage(file){
 window.startTranslation = startTranslation;
 window.setSourceLanguage = setSourceLanguage;
 window.setTargetLanguage = setTargetLanguage;
-window.setFont = setFont;
+window.setFont = setFont;                 
