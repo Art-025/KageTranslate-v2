@@ -1,40 +1,111 @@
 /* =========================================
-   Kage Translate
-   style.css
+   Kage Translate
+   style.css
+   Version 2.2
+
+   O'ZGARISHLAR (v2.1 -> v2.2):
+   - .spinner[hidden]{display:none;} - barcha brauzerlarda bir xil
+   - Progress bar ichidagi foiz matni endi ko'rinadi (oq rang)
+   - -webkit-tap-highlight-color, user-select, touch-action - telefon
+     uchun tugma bosish tajribasi yaxshilandi
+   - .card uchun fadeIn animatsiyasi - natijalar silliq paydo bo'ladi
+   - html{scroll-behavior:smooth;}, ::selection rangi
+   - img/canvas uchun oldindan tayyorlangan default (keyingi bosqichda
+     rasm preview/canvas render qo'shilganda darhol to'g'ri ishlaydi)
+   - paragraph-block padding-top 36 -> 42, box-shadow, word-break
+   - #results endi flex+gap orqali joylashadi (ortiqcha bo'shliqsiz)
+   - progress bar border-radius, file input Firefox uchun color:inherit
 ========================================= */
+
+@charset "UTF-8";
+
+:root{
+
+    --primary:#c0392b;
+    --primary-dark:#962d22;
+    --bg:#f4efe6;
+    --text:#161311;
+    --card-bg:#ffffff;
+    --card-border:#dddddd;
+    --muted:#666666;
+    --muted-light:#999999;
+    --track-bg:#e0dcd4;
+    --warning:#e0b93c;
+    --warning-bg:#fdf8ea;
+    --warning-text:#40340a;
+    --error-bg:#fdf1ef;
+    --error-text:#962d22;
+
+}
 
 /* RESET */
 
 *{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html{
+
+    scroll-behavior:smooth;
+
+}
+
+::selection{
+
+    background:var(--primary);
+
+    color:#ffffff;
+
 }
 
 /* BODY */
 
 body{
 
-    background:#f4efe6;
+    background:var(--bg);
 
-    color:#161311;
+    color:var(--text);
 
-    font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
+    font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
 
-    line-height:1.6;
+    line-height:1.6;
 
-    max-width:100%;
-    overflow-x:hidden;
+    max-width:100%;
+    min-height:100vh;
+    overflow-x:hidden;
+
+    -webkit-tap-highlight-color:transparent;
 
 }
+
+/* Kelajakda rasm preview / canvas render qo'shilganda ishlatiladi */
+
+img{
+
+    max-width:100%;
+
+    display:block;
+
+}
+
+canvas{
+
+    max-width:100%;
+
+    height:auto;
+
+}
+
 /* HEADER */
 
 header{
-    background:#ffffff;
-    border-bottom:4px solid #161311;
+    background:var(--card-bg);
+    border-bottom:4px solid var(--text);
     padding:25px;
     text-align:center;
 }
@@ -46,9 +117,8 @@ header h1{
 }
 
 header h1 span{
-    color:#c0392b;
+    color:var(--primary);
 }
-
 
 /* TAGLINE */
 
@@ -56,7 +126,7 @@ header p{
 
     margin-top:10px;
 
-    color:#666666;
+    color:var(--muted);
 
     font-size:16px;
 
@@ -66,6 +136,7 @@ header p{
 
 main{
 
+    width:100%;
     max-width:900px;
 
     margin:30px auto;
@@ -78,9 +149,9 @@ main{
 
 .card{
 
-    background:#ffffff;
+    background:var(--card-bg);
 
-    border:2px solid #dddddd;
+    border:2px solid var(--card-border);
 
     border-radius:15px;
 
@@ -90,6 +161,30 @@ main{
 
     box-shadow:0 5px 15px rgba(0,0,0,.08);
 
+    transition:box-shadow .2s;
+
+    animation:fadeIn .2s ease;
+
+}
+
+.card:hover{
+
+    box-shadow:0 8px 20px rgba(0,0,0,.12);
+
+}
+
+@keyframes fadeIn{
+
+    from{
+        opacity:0;
+        transform:translateY(8px);
+    }
+
+    to{
+        opacity:1;
+        transform:none;
+    }
+
 }
 
 /* CARD TITLE */
@@ -98,9 +193,27 @@ main{
 
     font-size:20px;
 
-    color:#161311;
+    color:var(--text);
 
     margin-bottom:15px;
+
+}
+
+/* Xato karta */
+
+.card-error{
+
+    border-color:var(--primary);
+
+    background:var(--error-bg);
+
+}
+
+.card-error p{
+
+    color:var(--error-text);
+
+    font-weight:bold;
 
 }
 
@@ -112,11 +225,11 @@ button{
 
     padding:15px;
 
-    border:none;
+    border:2px solid transparent;
 
     border-radius:10px;
 
-    background:#c0392b;
+    background:var(--primary);
 
     color:#ffffff;
 
@@ -126,15 +239,64 @@ button{
 
     cursor:pointer;
 
-    transition:0.3s;
+    user-select:none;
+
+    touch-action:manipulation;
+
+    transition:
+        background-color .2s,
+        border-color .2s,
+        transform .1s;
 
     margin-top:10px;
 
 }
 
-button:hover{
+button:not(:disabled):not(.active):hover{
 
-    background:#962d22;
+    background:var(--primary-dark);
+
+}
+
+button:active{
+
+    transform:scale(.98);
+
+}
+
+button:focus-visible{
+
+    outline:3px solid var(--primary);
+
+    outline-offset:2px;
+
+}
+
+/* Tanlangan til/font tugmasi */
+
+button.active{
+
+    background:var(--text);
+
+    border-color:var(--primary);
+
+}
+
+button.active::after{
+
+    content:" ✓";
+
+}
+
+button:disabled{
+
+    background:#cccccc;
+
+    color:#888888;
+
+    cursor:not-allowed;
+
+    transform:none;
 
 }
 
@@ -146,7 +308,7 @@ input[type="file"]{
 
     padding:15px;
 
-    border:2px dashed #c0392b;
+    border:2px dashed var(--primary);
 
     border-radius:10px;
 
@@ -154,36 +316,371 @@ input[type="file"]{
 
     font-size:15px;
 
+    color:inherit;
+
     cursor:pointer;
+
+    user-select:none;
+
+}
+
+input[type="file"]:focus-visible{
+
+    outline:3px solid var(--primary);
+
+    outline-offset:2px;
+
+}
+
+input[type="file"]::file-selector-button{
+
+    padding:8px 14px;
+
+    margin-right:12px;
+
+    border:none;
+
+    border-radius:8px;
+
+    background:var(--primary);
+
+    color:#ffffff;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+    transition:background-color .2s;
+
+}
+
+input[type="file"]::file-selector-button:hover{
+
+    background:var(--primary-dark);
 
 }
 
 /* STATUS */
 
-#status{
+#statusText{
 
     margin-top:15px;
 
     font-size:15px;
 
-    color:#555555;
+    color:var(--muted);
 
 }
 
-/* RESULT */
+/* LOADING SPINNER */
 
-#result{
+.spinner{
 
-    margin-top:20px;
+    display:block;
 
-    min-height:150px;
+    width:32px;
 
-    border:2px dashed #cccccc;
+    height:32px;
+
+    margin:15px auto 0;
+
+    border:4px solid var(--track-bg);
+
+    border-top-color:var(--primary);
+
+    border-radius:50%;
+
+    animation:spin 0.8s linear infinite;
+
+}
+
+.spinner[hidden]{
+
+    display:none;
+
+}
+
+@keyframes spin{
+
+    to{
+        transform:rotate(360deg);
+    }
+
+}
+
+/* PROGRESS BAR */
+
+.progress{
+
+    margin-top:15px;
+
+    height:14px;
+
+    background:var(--track-bg);
+
+    border-radius:20px;
+
+    overflow:hidden;
+
+}
+
+#progressBar{
+
+    width:0;
+
+    height:100%;
+
+    min-width:28px;
+
+    background:var(--primary);
+
+    color:#ffffff;
+
+    font-size:11px;
+
+    line-height:14px;
+
+    text-align:center;
+
+    border-radius:20px;
+
+    white-space:nowrap;
+
+    transition:
+        width .2s ease,
+        background-color .2s;
+
+}
+
+/* RESULT AREA */
+
+#results{
+
+    margin-top:10px;
+
+    min-height:100px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:15px;
+
+    scrollbar-color:var(--primary) var(--track-bg);
+
+}
+
+#results > .card{
+
+    margin-bottom:0;
+
+}
+
+#results > p{
+
+    color:var(--muted-light);
+
+    font-style:italic;
+
+    text-align:center;
+
+    padding:20px 0;
+
+}
+
+#results .card h3{
+
+    font-size:18px;
+
+    margin-bottom:12px;
+
+    color:var(--text);
+
+}
+
+/* PARAGRAPH BLOCK */
+
+.paragraph-block{
+
+    position:relative;
+
+    background:#faf7f2;
+
+    border:1px solid #e6e0d5;
 
     border-radius:10px;
 
-    padding:20px;
+    padding:15px;
 
-    background:#fafafa;
+    padding-top:42px;
+
+    margin-bottom:12px;
+
+    overflow-wrap:anywhere;
+
+    word-break:break-word;
+
+    box-shadow:0 2px 5px rgba(0,0,0,.05);
 
 }
+
+.paragraph-block.low-confidence{
+
+    border-color:var(--warning);
+
+    background:var(--warning-bg);
+
+}
+
+.paragraph-index{
+
+    position:absolute;
+
+    top:10px;
+
+    left:15px;
+
+    font-size:12px;
+
+    color:#aaaaaa;
+
+    font-weight:bold;
+
+}
+
+.badge-warning{
+
+    position:absolute;
+
+    top:8px;
+
+    right:12px;
+
+    background:var(--warning);
+
+    color:var(--warning-text);
+
+    font-size:12px;
+
+    font-weight:bold;
+
+    padding:3px 8px;
+
+    border-radius:20px;
+
+    white-space:nowrap;
+
+}
+
+.original-text{
+
+    color:var(--muted);
+
+    font-size:15px;
+
+    margin-bottom:8px;
+
+    white-space:pre-wrap;
+
+}
+
+.translated-text{
+
+    color:var(--text);
+
+    font-size:17px;
+
+    white-space:pre-wrap;
+
+}
+
+/* Matn topilmagan sahifalar uchun */
+
+.empty-note{
+
+    color:var(--muted-light);
+
+    font-style:italic;
+
+    text-align:center;
+
+    padding:15px 0;
+
+}
+
+/* FONTLAR (tarjima matni uchun) */
+
+.font-normal{
+
+    font-family:Arial, Helvetica, sans-serif;
+
+}
+
+.font-manga{
+
+    font-family:"Bangers", Impact, sans-serif;
+
+    letter-spacing:0.5px;
+
+    font-size:18px;
+
+}
+
+.font-handwritten{
+
+    font-family:"Caveat", cursive;
+
+    font-size:20px;
+
+}
+
+/* RESPONSIVE - TELEFON UCHUN */
+
+@media(max-width:600px){
+
+    header h1{
+        font-size:30px;
+    }
+
+    header p{
+        font-size:14px;
+    }
+
+    main{
+        padding:12px;
+        margin:15px auto;
+    }
+
+    .card{
+        padding:15px;
+    }
+
+    button{
+        font-size:15px;
+        padding:12px;
+    }
+
+    .translated-text{
+        font-size:16px;
+    }
+
+    .font-manga{
+        font-size:17px;
+    }
+
+    .font-handwritten{
+        font-size:18px;
+    }
+
+}
+
+/* ACCESSIBILITY - animatsiyaga sezgir foydalanuvchilar uchun */
+
+@media(prefers-reduced-motion:reduce){
+
+    *{
+        animation:none !important;
+        transition:none !important;
+    }
+
+    }
