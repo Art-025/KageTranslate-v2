@@ -502,6 +502,10 @@ async function startTranslation(){
 
     translationCache = new Map();
 
+translatedPages = [];
+
+translatedFileName = "";
+   
     try {
 
         for (const file of selectedFiles) {
