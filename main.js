@@ -120,6 +120,12 @@ let ocrWorker = null;
 
 let ocrWorkerLanguage = null;
 
+// PDF yaratish uchun saqlanadigan tarjimalar
+let translatedPages = [];
+
+// Oxirgi tarjima qilingan fayl nomi
+let translatedFileName = "";
+
 // Har bir tarjima qilingan sahifa/rasmning yakuniy tasviri shu yerda yig'iladi
 // (yangi PDF yaratish va ulashish uchun ishlatiladi)
 let translatedPageImages = [];
