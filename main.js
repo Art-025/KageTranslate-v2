@@ -152,6 +152,9 @@ const shareButton = document.getElementById("shareBtn");
 
 const GO_BUTTON_DEFAULT_LABEL = "Tarjima qilishni boshlash";
 
+const downloadPdfButton =
+    document.getElementById("downloadPdfBtn");
+
 // ======================================
 // APP START
 // ======================================
