@@ -1,236 +1,176 @@
 <!DOCTYPE html>
-<html lang="uz">
-
+<html lang="uz" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kage Translate</title>
+    
+    <!-- PWA, SEO va Mobil Brauzer Meta Sozlamalari -->
+    <meta name="theme-color" content="#161311">
+    <meta name="msapplication-navbutton-color" content="#161311">
+    <meta name="description" content="Kage Translate - Manga va Manhwa PDF tarjimoni">
+    <meta name="color-scheme" content="light">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
 
-    <meta name="theme-color"
-          content="#161311">
-
-    <link rel="manifest"
-          href="manifest.json">
-
-    <!-- Fayllar mavjudligini repo'da tekshiring -->
+    <!-- Ilova piktogrammalari -->
     <link rel="icon" href="icon.png">
     <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- Tashqi uslublar paneli va xavfsizlik sozlamalari -->
+    <link rel="stylesheet" href="style.css">
+    <meta name="referrer" content="no-referrer">
 
-    <link rel="stylesheet"
-          href="style.css">
-
+    <!-- Manga va Qo'lyozma shriftlari (Google Fonts) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@600&display=swap" rel="stylesheet">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-<script>
-    // MUHIM: workerSrc ko'rsatilmasa PDF.js hech qanday PDF'ni ocholmaydi.
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-</script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- PDF.js Kutubxonasi va Core Worker sozlamasi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    </script>
+    
+    <!-- Tesseract OCR va jsPDF kutubxonalari -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-
 <body>
 
     <noscript>
-        Bu sayt ishlashi uchun brauzeringizda JavaScript yoqilgan bo'lishi kerak.
+        <div style="padding: 20px; text-align: center; background-color: #c0392b; color: #ffffff;">
+            Bu sayt ishlashi uchun brauzeringizda JavaScript yoqilgan bo'lishi kerak.
+        </div>
     </noscript>
 
-    <header>
-
-        <h1>
-            <span>Kage</span> Translate
-        </h1>
-
-        <p>
-            Manga • Manhwa • PDF • Rasm tarjimoni
-        </p>
-
+    <header role="banner">
+        <div class="logo-area">
+            <h1><span>Kage</span> Translate</h1>
+        </div>
+        <p>Manga • Manhwa • PDF • Rasm tarjimoni</p>
     </header>
 
-    <main>
-
+    <main id="app" class="app-container" role="main">
         <!-- Original til -->
-
         <section class="card">
-
             <h2>Original til</h2>
-
-            <button type="button"
-        id="englishBtn"
-        onclick="setSourceLanguage('en', this)">
-
-    🇺🇸 Inglizcha
-
-</button>
-
-<button type="button"
-        id="russianBtn"
-        onclick="setSourceLanguage('ru', this)">
-
-    🇷🇺 Ruscha
-
-</button>
-
+            <div class="button-group" role="group" aria-label="Original til">
+                <button type="button" id="englishBtn" class="active" onclick="setSourceLanguage('en', this)">🇺🇸 Inglizcha</button>
+                <button type="button" id="russianBtn" onclick="setSourceLanguage('ru', this)">🇷🇺 Ruscha</button>
+            </div>
         </section>
-
 
         <!-- Tarjima tili -->
-
         <section class="card">
-
             <h2>Tarjima tili</h2>
-
-            <button type="button"
-        id="targetUzBtn"
-        onclick="setTargetLanguage('uz', this)">
-
-    🇺🇿 O'zbekcha
-
-</button>
-
-<button type="button"
-        id="targetRuBtn"
-        onclick="setTargetLanguage('ru', this)">
-
-    🇷🇺 Ruscha
-
-</button>
-
-<button type="button"
-        id="targetEnBtn"
-        onclick="setTargetLanguage('en', this)">
-
-    🇺🇸 Inglizcha
-
-</button>
-
+            <div class="button-group" role="group" aria-label="Tarjima tili">
+                <button type="button" id="targetUzBtn" class="active" onclick="setTargetLanguage('uz', this)">🇺🇿 O'zbekcha</button>
+                <button type="button" id="targetRuBtn" onclick="setTargetLanguage('ru', this)">🇷🇺 Ruscha</button>
+                <button type="button" id="targetEnBtn" onclick="setTargetLanguage('en', this)">🇺🇸 Inglizcha</button>
+            </div>
         </section>
-
 
         <!-- Shrift -->
-
         <section class="card">
-
             <h2>Shrift</h2>
-
-            <button type="button" onclick="setFont('normal', this)">
-    Oddiy
-</button>
-
-<button type="button" onclick="setFont('manga', this)">
-    Manga
-</button>
-
-<button type="button" onclick="setFont('handwritten', this)">
-    Handwritten
-</button>
-
+            <div class="button-group" role="group" aria-label="Shrift">
+                <button type="button" onclick="setFont('normal', this)">Oddiy</button>
+                <button type="button" class="active" onclick="setFont('manga', this)">Manga</button>
+                <button type="button" onclick="setFont('handwritten', this)">Handwritten</button>
+            </div>
         </section>
 
-
-        <!-- Fayl -->
-
+        <!-- Fayl yuklash qismi -->
         <section class="card">
-
             <h2>Fayl yuklash</h2>
-
-            <input
-    type="file"
-    id="pdfInput"
-    accept=".pdf,.png,.jpg,.jpeg,.webp"
-    multiple>
-
+            <label for="pdfInput">PDF yoki rasm tanlang</label>
+            <input type="file" id="pdfInput" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple autocomplete="off" aria-describedby="statusText">
         </section>
 
-
-        <!-- Boshlash -->
-
+        <!-- Boshlash tugmasi -->
         <section class="card">
-
-            <button
-    type="button"
-    id="goBtn"
-    onclick="startTranslation()"
-    disabled>
-
-    Tarjima qilishni boshlash
-
-</button>
-
+            <button type="button" id="goBtn" onclick="startTranslation()" disabled>
+                Tarjima qilishni boshlash
+            </button>
         </section>
 
-
-        <!-- Holat -->
-
+        <!-- Holat va Progress -->
         <section class="card">
-
             <h2>Holati</h2>
-
-            <p id="statusText">
-
-        Fayl tanlanmagan
-
-</p>
-
-<div id="loadingSpinner" class="spinner" hidden></div>
-
-<div class="progress">
-
-    <div
-        id="progressBar"
-        role="progressbar"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-valuenow="0">
-    </div>
-
-</div>
-
+            <p id="statusText">Fayl tanlanmagan</p>
+            <div id="loadingSpinner" class="spinner" hidden></div>
+            
+            <div class="progress">
+                <div id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Tarjima jarayoni progressi" aria-live="polite">
+                    0%
+                </div>
+            </div>
         </section>
 
-
-        <!-- Natija -->
-
+        <!-- Natija, Preview Area konteyneri va yuklab olish -->
         <section class="card">
-
             <h2>Natija</h2>
-
-            <div id="results">
-
-    <p>
-
-        Hozircha natija yo'q.
-
-    </p>
-
-</div>
-            <hr>
-
-<button
-    type="button"
-    id="downloadPdfBtn"
-    onclick="downloadTranslatedPdf()"
-    disabled>
-
-    📄 Tarjima qilingan PDF-ni yuklab olish
-
-</button>
-
+            
+            <!-- CSS va JS uchun moslashuvchan konteyner va klasslar -->
+            <div id="previewArea" class="preview-area hidden">
+                <div id="pageContainer" class="page-container">
+                    <div id="canvasContainer" class="canvas-container"></div>
+                    <div id="pdfPreview"></div>
+                    <div id="ocrLayer"></div>
+                    <div id="bubbleLayer" class="bubble-layer" aria-hidden="true"></div>
+                </div>
+            </div>
+            
+            <div id="results" aria-live="polite" aria-atomic="false">
+                <p>Hozircha natija yo'q.</p>
+            </div>
+            <hr class="divider">
+            
+            <div class="button-group" role="group">
+                <button type="button" id="downloadPdfBtn" onclick="downloadTranslatedPdf()" disabled>
+                    📄 Tarjima qilingan PDF-ni yuklab olish
+                </button>
+                <button type="button" id="downloadBtn" class="hidden">Rasmlarni yuklab olish</button>
+                <button type="button" id="shareBtn" class="hidden">Ulashish</button>
+            </div>
         </section>
 
+        <!-- Yashirin yuklab olish havolasi -->
+        <a id="downloadLink" hidden download></a>
     </main>
 
+    <!-- Dinamik bildirishnomalar va UI elementlari -->
+    <div id="toast" class="toast" hidden></div>
+    <div id="overlay" class="overlay" hidden></div>
+
+    <!-- Xatolik Modali -->
+    <div id="errorModal" class="modal" role="dialog" aria-modal="true" hidden>
+        <h3>Xatolik</h3>
+        <p id="errorMessage"></p>
+        <button type="button" onclick="closeErrorModal()">Yopish</button>
+    </div>
+
+    <!-- Tasdiqlash Modali -->
+    <div id="confirmModal" class="modal" role="dialog" aria-modal="true" hidden>
+        <h3>Tasdiqlash</h3>
+        <p id="confirmMessage"></p>
+        <button id="confirmYes" type="button">Ha</button>
+        <button id="confirmNo" type="button">Yo'q</button>
+    </div>
+
+    <footer class="footer" role="contentinfo">
+        <p>Kage Translate © 2026</p>
+    </footer>
+
+    <!-- Kesh va Offscreen elementlar -->
+    <div id="renderCache" class="hidden" aria-hidden="true"></div>
+    <canvas id="processingCanvas" class="offscreen-canvas" hidden></canvas>
+    <canvas id="bubbleCanvas" class="offscreen-canvas" hidden></canvas>
+
+    <!-- Asosiy mantiqiy kod fayli -->
     <script src="main.js"></script>
 
 </body>
-
-                    </html>
+</html>
