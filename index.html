@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#161311">
     <meta name="msapplication-navbutton-color" content="#161311">
     <meta name="description" content="Kage Translate - Manga va Manhwa PDF tarjimoni">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="dark light">
     <meta name="format-detection" content="telephone=no">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
@@ -25,7 +25,7 @@
     <!-- Manga va Qo'lyozma shriftlari (Google Fonts) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@600&family=Comic+Neue:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
 
     <!-- PDF.js Kutubxonasi va Core Worker sozlamasi -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -37,7 +37,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-<body>
+<body class="font-manga">
 
     <noscript>
         <div style="padding: 20px; text-align: center; background-color: #c0392b; color: #ffffff;">
@@ -52,7 +52,7 @@
         <p>Manga • Manhwa • PDF • Rasm tarjimoni</p>
     </header>
 
-    <main id="app" class="app-container" role="main">
+    <main id="app" class="app-container" role="main" aria-busy="false">
         <!-- Original til -->
         <section class="card">
             <h2>Original til</h2>
@@ -85,11 +85,11 @@
         <!-- Fayl yuklash qismi -->
         <section class="card">
             <h2>Fayl yuklash</h2>
-            <label for="pdfInput">PDF yoki rasm tanlang</label>
+            <label for="pdfInput" class="file-label">PDF yoki rasm tanlang</label>
             <input type="file" id="pdfInput" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple autocomplete="off" aria-describedby="statusText">
         </section>
 
-        <!-- Boshlash tugmasi -->
+        <!-- Boshlash / To'xtatish tugmasi -->
         <section class="card">
             <button type="button" id="goBtn" onclick="startTranslation()" disabled>
                 Tarjima qilishni boshlash
@@ -100,7 +100,7 @@
         <section class="card">
             <h2>Holati</h2>
             <p id="statusText">Fayl tanlanmagan</p>
-            <div id="loadingSpinner" class="spinner" hidden></div>
+            <div id="loadingSpinner" class="spinner hidden"></div>
             
             <div class="progress">
                 <div id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Tarjima jarayoni progressi" aria-live="polite">
@@ -109,16 +109,14 @@
             </div>
         </section>
 
-        <!-- Natija, Preview Area konteyneri va yuklab olish -->
+        <!-- Natija, Preview Area va Eksport -->
         <section class="card">
             <h2>Natija</h2>
             
-            <!-- CSS va JS uchun moslashuvchan konteyner va klasslar -->
             <div id="previewArea" class="preview-area hidden">
                 <div id="pageContainer" class="page-container">
-                    <div id="canvasContainer" class="canvas-container"></div>
-                    <div id="pdfPreview"></div>
-                    <div id="ocrLayer"></div>
+                    <div id="pdfPreview" class="pdf-preview"></div>
+                    <div id="ocrLayer" class="ocr-layer"></div>
                     <div id="bubbleLayer" class="bubble-layer" aria-hidden="true"></div>
                 </div>
             </div>
@@ -138,39 +136,41 @@
         </section>
 
         <!-- Yashirin yuklab olish havolasi -->
-        <a id="downloadLink" hidden download></a>
+        <a id="downloadLink" class="hidden" download></a>
     </main>
 
     <!-- Dinamik bildirishnomalar va UI elementlari -->
-    <div id="toast" class="toast" hidden></div>
-    <div id="overlay" class="overlay" hidden></div>
+    <div id="toast" class="toast hidden" role="alert"></div>
+    <div id="overlay" class="overlay hidden"></div>
 
     <!-- Xatolik Modali -->
-    <div id="errorModal" class="modal" role="dialog" aria-modal="true" hidden>
-        <h3>Xatolik</h3>
+    <div id="errorModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="errorTitle">
+        <h3 id="errorTitle">Xatolik</h3>
         <p id="errorMessage"></p>
         <button type="button" onclick="closeErrorModal()">Yopish</button>
     </div>
 
-    <!-- Tasdiqlash Modali -->
-    <div id="confirmModal" class="modal" role="dialog" aria-modal="true" hidden>
-        <h3>Tasdiqlash</h3>
+    <!-- Tasdiqlash Modali (Confirm Modal) -->
+    <div id="confirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <h3 id="confirmTitle">Tasdiqlash</h3>
         <p id="confirmMessage"></p>
-        <button id="confirmYes" type="button">Ha</button>
-        <button id="confirmNo" type="button">Yo'q</button>
+        <div class="button-group">
+            <button id="confirmYes" type="button">Ha</button>
+            <button id="confirmNo" type="button">Yo'q</button>
+        </div>
     </div>
 
     <footer class="footer" role="contentinfo">
         <p>Kage Translate © 2026</p>
     </footer>
 
-    <!-- Kesh va Offscreen elementlar -->
+    <!-- Kesh va Processing Canvas-lar (PDF overlay bilan eksport uchun ishlatiladi) -->
     <div id="renderCache" class="hidden" aria-hidden="true"></div>
     <canvas id="processingCanvas" class="offscreen-canvas" hidden></canvas>
     <canvas id="bubbleCanvas" class="offscreen-canvas" hidden></canvas>
 
-    <!-- Asosiy mantiqiy kod fayli -->
+    <!-- Asosiy optimallashtirilgan JS kodi -->
     <script src="main.js"></script>
 
 </body>
-</html>
+    </html>
