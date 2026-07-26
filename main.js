@@ -1,1357 +1,606 @@
-/*
-=========================================
-Kage Translate
-main.js
-Version 1.5 (fixed)
-
-O'ZGARISHLAR (v1.4 -> v1.5):
-1. BUG TUZATILDI: getPdfTextLayer() endi barcha matnni bitta
-   qatorga birlashtirmaydi - PDF elementlarining y-koordinatasiga
-   qarab qatorlarga to'g'ri ajratadi. Shu tufayli split("\n")
-   endi to'g'ri ishlaydi.
-2. getPdfTextLayer() endi belgilar soni emas, items.length orqali
-   "matn qatlami bormi" ekanini tekshiradi (qisqa "Yes." "No." kabi
-   matnlar endi noto'g'ri OCR'ga yuborilmaydi).
-3. Matn qatlamidan olingan paragraflar uchun confidence = null
-   qo'yiladi (OCR bo'lmagani uchun "100% ishonch" degan noto'g'ri
-   taassurot berilmaydi).
-4. MAX_SAFE_PIXELS 25 mln -> 12 mln (eski/kuchsiz qurilmalarda
-   Out Of Memory xavfini yanada kamaytiradi).
-5. Paragraflarni saralashdagi ROW_THRESHOLD endi render scale'ga
-   qarab moslashadi (scale=1 va scale=3 uchun bir xil piksel
-   chegarasi ishlatilmaydi).
-6. Progress endi Math.floor() bilan hisoblanadi - vizual jihatdan
-   silliqroq ko'rinadi.
-7. computeMinWordConfidence() endi word.confidence topilmasa
-   word.conf ga ham qaraydi (Tesseract versiyalari farqi uchun).
-8. translateLongText() endi:
-   - juda uzun bitta jumla bo'lsa, uni ham so'zlar bo'yicha
-     yana bo'lakларга bo'ladi (avval bitta 5000 belgili jumla
-     bo'linmay qolardi);
-   - jumlalar orasidagi original probel/yangi qator formatini
-     saqlab qoladi (tarjimada dialog qatorlari aralashib ketmaydi).
-
-Qasddan o'zgartirilmagan (arxitektura tanlovi, xato emas):
-- beforeunload ichida terminate() kutilmaydi - brauzer bu yerda
-  Promise'ni kuta olmaydi, bu "best-effort" yondashuv to'g'ri.
-- translationCache har startTranslation() da tozalanadi - har bir
-  tarjima sessiyasi mustaqil bo'lishi uchun ataylab shunday.
-
-Keyingi bosqichga qoldirilgan: unicode punktuatsiya/harflar (ko'p
-tillilik qo'shilganda), bubble detection, matnni rasm ustiga qayta
-joylashtirish, yangi PDF yaratish.
-=========================================
-*/
-
-"use strict";
-
 // ======================================
-// CONSTANTS
+// KONSTANTALAR VA SOZLAMALAR
 // ======================================
 
-const DEBUG = true;
-
-const TRANSLATE_TIMEOUT_MS = 10000;
-
-const TRANSLATE_MAX_RETRIES = 2;
-
-const TRANSLATE_RETRY_DELAY_MS = 800;
-
-const OCR_PROGRESS_WEIGHT = 0.6;
-
-const TRANSLATE_PROGRESS_WEIGHT = 0.4;
-
-const MAX_CHUNK_LENGTH = 400;
-
-const SCALE_LARGE_PAGE = 2;
-
-const SCALE_NORMAL_PAGE = 3;
-
-const LARGE_PAGE_THRESHOLD = 1500;
-
-// Xavfsiz maksimal pixel soni (eski qurilmalar uchun ham xavfsiz)
-const MAX_SAFE_PIXELS = 12_000_000;
-
-const LOW_CONFIDENCE_THRESHOLD = 60;
-
-// Qatorlarni ajratishda ishlatiladigan bazaviy piksel chegarasi (scale=1 uchun)
-const ROW_THRESHOLD_BASE = 20;
-
-// Matn qatlamida qator deb hisoblash uchun y-koordinata farqi tolerantligi
-const TEXT_LAYER_Y_TOLERANCE = 2;
-
-// ---- Tarjimani rasm/PDF ustiga chizish uchun sozlamalar ----
-
-// Original matn o'rnini "tozalash" uchun fon rangi (haqiqiy bubble fonini
-// aniqlamaymiz, shuning uchun oq eng ko'p uchraydigan holat sifatida tanlangan)
-const TEXT_OVERLAY_BG = "#ffffff";
-
-const TEXT_OVERLAY_TEXT_COLOR = "#111111";
-
-const MIN_OVERLAY_FONT_SIZE = 10;
-
-const MAX_OVERLAY_FONT_SIZE = 42;
-
-// selectedFont qiymatiga mos canvas shrift satrlari
-const OVERLAY_FONT_MAP = {
-    normal: "Arial, Helvetica, sans-serif",
-    manga: "'Bangers', 'Arial Black', Impact, sans-serif",
-    handwritten: "'Caveat', 'Comic Sans MS', cursive"
+const CONFIG = {
+    TRANSLATE_MAX_RETRIES: 3,
+    TRANSLATE_RETRY_DELAY_MS: 800,
+    FETCH_TIMEOUT_MS: 5000,
+    MAX_CACHE_SIZE: 100,
+    PDF_SCALE: 2.5, // OCR va sifat oshirildi
+    BATCH_SIZE: 5   // Parallel tarjima limiti
 };
 
-// Chiqarilgan sahifa rasmlari uchun JPEG sifati (0-1)
-const OUTPUT_IMAGE_QUALITY = 0.92;
+// Global holat
+let state = {
+    sourceLang: "en",
+    targetLang: "uz",
+    fontFamily: "manga",
+    files: [],
+    isProcessing: false,
+    translationCache: new Map(),
+    ocrWorker: null,
+    ocrWorkerLang: null,
+    abortController: null
+};
+
+// DOM Elementlari
+const DOM = {
+    app: document.getElementById("app"),
+    pdfInput: document.getElementById("pdfInput"),
+    goBtn: document.getElementById("goBtn"),
+    statusText: document.getElementById("statusText"),
+    loadingSpinner: document.getElementById("loadingSpinner"),
+    progressBar: document.getElementById("progressBar"),
+    previewArea: document.getElementById("previewArea"),
+    pageContainer: document.getElementById("pageContainer"),
+    pdfPreview: document.getElementById("pdfPreview"),
+    ocrLayer: document.getElementById("ocrLayer"),
+    results: document.getElementById("results"),
+    downloadPdfBtn: document.getElementById("downloadPdfBtn"),
+    downloadBtn: document.getElementById("downloadBtn"),
+    shareBtn: document.getElementById("shareBtn"),
+    toast: document.getElementById("toast"),
+    overlay: document.getElementById("overlay"),
+    errorModal: document.getElementById("errorModal"),
+    errorMessage: document.getElementById("errorMessage"),
+    confirmModal: document.getElementById("confirmModal"),
+    confirmMessage: document.getElementById("confirmMessage"),
+    confirmYes: document.getElementById("confirmYes"),
+    confirmNo: document.getElementById("confirmNo"),
+    processingCanvas: document.getElementById("processingCanvas"),
+    bubbleCanvas: document.getElementById("bubbleCanvas")
+};
 
 // ======================================
-// GLOBAL VARIABLES
+// YORDAMCHI FUNKSIYALAR & SECURITY
 // ======================================
 
-let selectedFiles = [];
+function showToast(message) {
+    if (!DOM.toast) return;
+    DOM.toast.textContent = message;
+    DOM.toast.classList.remove("hidden");
+    setTimeout(() => DOM.toast.classList.add("hidden"), 3000);
+}
 
-let sourceLanguage = "en";
-
-let targetLanguage = "uz";
-
-let selectedFont = "manga";
-
-let translationCache = new Map();
-
-let ocrWorker = null;
-
-let ocrWorkerLanguage = null;
-
-// PDF yaratish uchun saqlanadigan tarjimalar
-let translatedPages = [];
-
-// Oxirgi tarjima qilingan fayl nomi
-let translatedFileName = "";
-
-// Har bir tarjima qilingan sahifa/rasmning yakuniy tasviri shu yerda yig'iladi
-// (yangi PDF yaratish va ulashish uchun ishlatiladi)
-let translatedPageImages = [];
-
-// ======================================
-// DOM ELEMENTS
-// ======================================
-
-const fileInput = document.getElementById("pdfInput");
-
-const statusText = document.getElementById("statusText");
-
-const goButton = document.getElementById("goBtn");
-
-const resultArea = document.getElementById("results");
-
-const progressBar = document.getElementById("progressBar");
-
-const loadingSpinner = document.getElementById("loadingSpinner");
-
-const downloadButton = document.getElementById("downloadBtn");
-
-const shareButton = document.getElementById("shareBtn");
-
-const GO_BUTTON_DEFAULT_LABEL = "Tarjima qilishni boshlash";
-
-const downloadPdfButton =
-    document.getElementById("downloadPdfBtn");
-
-// ======================================
-// APP START
-// ======================================
-
-window.addEventListener("load", () => {
-
-    log("Kage Translate Started");
-
-    const defaultEnglishBtn = document.getElementById("englishBtn");
-    if(defaultEnglishBtn) setActiveButton(defaultEnglishBtn);
-
-    const defaultTargetBtn = document.getElementById("targetUzBtn");
-    if(defaultTargetBtn) setActiveButton(defaultTargetBtn);
-
-    const defaultFontBtn = document.querySelector('button[onclick*="setFont(\'manga\'"]');
-    if(defaultFontBtn) setActiveButton(defaultFontBtn);
-
-});
-
-// Sahifa yopilganda OCR workerni tugatishga urinish (best-effort;
-// brauzer bu yerda Promise tugashini kutmaydi, bu normal holat).
-window.addEventListener("beforeunload", () => {
-
-    if(ocrWorker !== null){
-
-        ocrWorker.terminate();
-
+function showError(message) {
+    if (DOM.errorMessage && DOM.errorModal && DOM.overlay) {
+        DOM.errorMessage.textContent = message;
+        DOM.errorModal.classList.remove("hidden");
+        DOM.overlay.classList.remove("hidden");
+    } else {
+        alert(message);
     }
-
-});
-
-// ======================================
-// HELPERS
-// ======================================
-
-function log(...args){
-
-    if(DEBUG){
-        console.log(...args);
-    }
-
 }
 
-function setStatus(text){
-
-    if(statusText){
-        statusText.textContent = text;
-    }
-
-    log(text);
-
+function closeErrorModal() {
+    if (DOM.errorModal) DOM.errorModal.classList.add("hidden");
+    if (DOM.overlay) DOM.overlay.classList.add("hidden");
 }
 
-function sleep(ms){
-
-    return new Promise((resolve) => setTimeout(resolve, ms));
-
+function setStatus(text) {
+    if (DOM.statusText) DOM.statusText.textContent = text;
 }
 
-function sanitizeConfidence(value){
-
-    if(typeof value !== "number") return null;
-
-    if(!Number.isFinite(value)) return null;
-
-    if(value < 0 || value > 100) return null;
-
-    return value;
-
+function updateProgress(percent) {
+    if (!DOM.progressBar) return;
+    const clamped = Math.min(100, Math.max(0, Math.round(percent)));
+    DOM.progressBar.style.width = `${clamped}%`;
+    DOM.progressBar.textContent = `${clamped}%`;
+    DOM.progressBar.setAttribute("aria-valuenow", clamped);
 }
 
-function normalizeForCache(text){
-
-    return text
-        .replace(/[\u00A0\u3000]/g, " ")
-        .trim()
-        .toLowerCase()
-        .replace(/(\.{3,}|…|・{2,})/g, "...")
-        .replace(/[.!?？！。、,]+$/g, "")
-        .replace(/\s+/g, " ");
-
-}
-
-function cleanOcrText(text){
-
-    return (text ?? "")
-        .replace(/([a-zA-Z])-\n([a-zA-Z])/g, "$1$2")
-        .replace(/[ \t]+/g, " ")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
-
-}
-
-function updateOverallProgress(itemIndex, totalItems, itemFraction){
-
-    if(!progressBar) return;
-
-    const clampedFraction = Math.max(0, Math.min(1, itemFraction));
-
-    const overall = ((itemIndex + clampedFraction) / totalItems) * 100;
-
-    const percent = Math.max(0, Math.min(100, Math.floor(overall)));
-
-    progressBar.style.width = percent + "%";
-
-    progressBar.textContent = percent + "%";
-
-    progressBar.setAttribute("aria-valuenow", percent);
-
-}
-
-function getRenderScale(page){
-
-    const baseViewport = page.getViewport({ scale: 1 });
-
-    let scale = Math.max(baseViewport.width, baseViewport.height) > LARGE_PAGE_THRESHOLD
-        ? SCALE_LARGE_PAGE
-        : SCALE_NORMAL_PAGE;
-
-    let pixels = (baseViewport.width * scale) * (baseViewport.height * scale);
-
-    while(pixels > MAX_SAFE_PIXELS && scale > 1){
-
-        scale -= 0.5;
-
-        pixels = (baseViewport.width * scale) * (baseViewport.height * scale);
-
-    }
-
-    return scale;
-
-}
-
-// Matnni jumlalarga bo'lish, har birining ORIGINAL bo'shliq/yangi qator
-// formatini saqlagan holda (dialog qatorlari aralashib ketmasligi uchun)
-function splitIntoSentences(text){
-
-    const matches = text.match(/[^.!?]+[.!?]*\s*/g);
-
-    if(!matches) return [text];
-
-    return matches.filter((s) => s.trim() !== "");
-
-}
-
-// Bitta jumla ham juda uzun bo'lsa, so'zlar bo'yicha yana bo'laklarga bo'lish
-function splitLongChunk(text, maxLen){
-
-    if(text.length <= maxLen) return [text];
-
-    const words = text.split(" ");
-
-    const chunks = [];
-
-    let current = "";
-
-    for(const word of words){
-
-        const candidate = current === "" ? word : current + " " + word;
-
-        if(candidate.length > maxLen && current !== ""){
-
-            chunks.push(current);
-
-            current = word;
-
-        }else{
-
-            current = candidate;
-
+function setProcessingState(isProcessing) {
+    state.isProcessing = isProcessing;
+    if (DOM.app) DOM.app.setAttribute("aria-busy", isProcessing ? "true" : "false");
+    
+    if (isProcessing) {
+        if (DOM.loadingSpinner) DOM.loadingSpinner.classList.remove("hidden");
+        if (DOM.overlay) DOM.overlay.classList.remove("hidden");
+        if (DOM.goBtn) {
+            DOM.goBtn.textContent = "To'xtatish (Cancel)";
+            DOM.goBtn.disabled = false;
         }
-
-    }
-
-    if(current !== ""){
-        chunks.push(current);
-    }
-
-    return chunks;
-
-}
-
-// Paragraflarni bbox bo'yicha o'qish tartibiga saralash.
-// scale - qanday render scale'da OCR qilinganini bildiradi (rasmlar uchun 1).
-function sortParagraphsByReadingOrder(paragraphs, scale = 1){
-
-    const rowThreshold = ROW_THRESHOLD_BASE * scale;
-
-    return paragraphs.slice().sort((a, b) => {
-
-        if(!a.bbox || !b.bbox) return 0;
-
-        const dy = a.bbox.y0 - b.bbox.y0;
-
-        if(Math.abs(dy) > rowThreshold){
-            return dy;
+    } else {
+        if (DOM.loadingSpinner) DOM.loadingSpinner.classList.add("hidden");
+        if (DOM.overlay) DOM.overlay.classList.add("hidden");
+        if (DOM.goBtn) {
+            DOM.goBtn.textContent = "Tarjima qilishni boshlash";
+            DOM.goBtn.disabled = state.files.length === 0;
         }
-
-        return a.bbox.x0 - b.bbox.x0;
-
-    });
-
-}
-
-// Paragraf ichidagi eng past so'z aniqligini topish (Tesseract versiyasiga qarab
-// word.confidence yoki word.conf bo'lishi mumkin)
-function computeMinWordConfidence(para){
-
-    let min = null;
-
-    if(!para.lines) return null;
-
-    for(const line of para.lines){
-
-        if(!line.words) continue;
-
-        for(const word of line.words){
-
-            const rawConfidence = word.confidence ?? word.conf;
-
-            const c = sanitizeConfidence(rawConfidence);
-
-            if(c !== null && (min === null || c < min)){
-                min = c;
-            }
-
-        }
-
     }
-
-    return min;
-
 }
 
-// ======================================
-// FILE SELECT
-// ======================================
-
-if(fileInput){
-
-    fileInput.addEventListener("change", (event) => {
-
-        selectedFiles = Array.from(event.target.files);
-
-        if(selectedFiles.length > 0){
-
-            setStatus(`${selectedFiles.length} ta fayl tanlandi.`);
-
-            if(goButton){
-                goButton.disabled = false;
-                goButton.textContent = GO_BUTTON_DEFAULT_LABEL;
-            }
-
-        }else{
-
-            setStatus("Fayl tanlanmagan.");
-
-            if(goButton) goButton.disabled = true;
-
-        }
-
-    });
-
+function cleanText(text) {
+    if (!text) return "";
+    return text.replace(/\s+/g, " ").trim();
 }
 
-// Bosilgan tugmani "active" qilib, shu guruhdagi boshqalarini tozalash
-function setActiveButton(buttonEl){
-
-    if(!buttonEl) return;
-
-    const group = buttonEl.parentElement;
-
-    if(!group) return;
-
-    group.querySelectorAll("button").forEach((btn) => btn.classList.remove("active"));
-
-    buttonEl.classList.add("active");
-
-}
-
-// ======================================
-// LANGUAGE / FONT SETTINGS
-// ======================================
-
-function setSourceLanguage(language, buttonEl){
-
-    sourceLanguage = language;
-
-    setActiveButton(buttonEl);
-
-    log("Original til:", sourceLanguage);
-
-}
-
-function setTargetLanguage(language, buttonEl){
-
-    targetLanguage = language;
-
-    setActiveButton(buttonEl);
-
-    log("Tarjima tili:", targetLanguage);
-
-}
-
-function setFont(fontName, buttonEl){
-
-    selectedFont = fontName;
-
-    setActiveButton(buttonEl);
-
-    log("Font:", selectedFont);
-
-}
-
-// ======================================
-// START TRANSLATION
-// ======================================
-
-async function startTranslation(){
-
-    if(selectedFiles.length === 0){
-
-        alert("Iltimos, avval PDF yoki rasm tanlang.");
-
-        return;
-
+function addToCache(key, val) {
+    if (state.translationCache.size >= CONFIG.MAX_CACHE_SIZE) {
+        const firstKey = state.translationCache.keys().next().value;
+        state.translationCache.delete(firstKey);
     }
-
-    setStatus("Tarjima tayyorlanmoqda...");
-
-    if(goButton){
-        goButton.disabled = true;
-        goButton.textContent = "Tarjima qilinmoqda...";
-    }
-
-    if(loadingSpinner) loadingSpinner.hidden = false;
-
-    if(resultArea) resultArea.innerHTML = "";
-
-    if(progressBar){
-        progressBar.style.width = "0%";
-        progressBar.textContent = "0%";
-        progressBar.setAttribute("aria-valuenow", "0");
-    }
-
-    translationCache = new Map();
-
-translatedPages = [];
-
-translatedFileName = "";
-   
-    try {
-
-        for (const file of selectedFiles) {
-
-            if (file.type === "application/pdf") {
-                await processPdf(file);
-            }
-            else if (file.type.startsWith("image/")) {
-                await processImage(file);
-            }
-            else {
-
-                log("Qo'llab-quvvatlanmaydigan fayl:", file.name);
-
-                if(resultArea){
-                    resultArea.appendChild(
-                        createMessageCard(`"${file.name}" fayli qo'llab-quvvatlanmaydi.`, "card-error")
-                    );
-                }
-
-            }
-
-        }
-
-        setStatus("Tarjima yakunlandi.");
-
-        if(goButton) goButton.textContent = "Tarjima tugadi ✅";
-
-    }
-    catch(error){
-
-        console.error("Tarjima jarayonida xato:", error);
-
-        setStatus("Xatolik yuz berdi. Konsolni tekshiring.");
-
-        if(goButton) goButton.textContent = "Xatolik yuz berdi";
-
-    }
-    finally {
-
-        if(goButton) goButton.disabled = false;
-
-        if(loadingSpinner) loadingSpinner.hidden = true;
-
-    }
-
+    state.translationCache.set(key, val);
 }
 
-// ======================================
-// READ PDF FILE
-// ======================================
-
-async function readPdf(file){
-
-    try{
-
-        const arrayBuffer = await file.arrayBuffer();
-
-        const pdf = await pdfjsLib.getDocument({
-            data: arrayBuffer
-        }).promise;
-
-        setStatus(`${pdf.numPages} ta sahifa topildi.`);
-
-        return pdf;
-
-    }catch(error){
-
-        console.error("PDF Error:", error);
-
-        alert("PDF faylni o'qib bo'lmadi.");
-
-        return null;
-
-    }
-
-}
-
-// PDF sahifasidagi matn qatlamini o'qishga urinish (OCR shart bo'lmasligi uchun).
-// Elementlar y-koordinatasiga qarab qatorlarga to'g'ri ajratiladi.
-async function getPdfTextLayer(page){
-
-    try{
-
-        const content = await page.getTextContent();
-
-        const items = content.items || [];
-
-        if(items.length === 0){
-            return null;
-        }
-
-        const lines = [];
-
-        let currentLine = "";
-
-        let lastY = null;
-
-        for(const item of items){
-
-            const y = item.transform ? item.transform[5] : null;
-
-            const isNewLine =
-                lastY !== null &&
-                y !== null &&
-                Math.abs(y - lastY) > TEXT_LAYER_Y_TOLERANCE;
-
-            if(isNewLine && currentLine.trim() !== ""){
-
-                lines.push(currentLine.trim());
-
-                currentLine = "";
-
-            }
-
-            currentLine += item.str + " ";
-
-            if(item.hasEOL){
-
-                lines.push(currentLine.trim());
-
-                currentLine = "";
-
-            }
-
-            lastY = y;
-
-        }
-
-        if(currentLine.trim() !== ""){
-            lines.push(currentLine.trim());
-        }
-
-        const fullText = lines.join("\n").trim();
-
-        return fullText.length > 0 ? fullText : null;
-
-    }catch(error){
-
-        console.error("Text layer xatosi:", error);
-
-        return null;
-
-    }
-
-}
-
-// ======================================
-// READ IMAGE
-// ======================================
-
-function readImage(file){
-
-    return new Promise((resolve,reject)=>{
-
-        const image = new Image();
-
-        const imageUrl = URL.createObjectURL(file);
-
-        image.onload = ()=>{
-
-            URL.revokeObjectURL(imageUrl);
-
-            resolve(image);
-
-        };
-
-        image.onerror = ()=>{
-
-            URL.revokeObjectURL(imageUrl);
-
-            reject(new Error("Rasmni yuklab bo'lmadi."));
-
-        };
-
-        image.src = imageUrl;
-
-    });
-
-                                          }
-
-// ======================================
-// INIT OCR WORKER (sessiya davomida qayta ishlatiladi)
-// ======================================
-
-async function initOcrWorker(){
-
-    if(ocrWorker !== null && ocrWorkerLanguage === sourceLanguage){
-        return;
-    }
-
-    if(ocrWorker !== null){
-
-        await ocrWorker.terminate();
-
-        ocrWorker = null;
-
-        ocrWorkerLanguage = null;
-
-    }
-
-    setStatus("OCR yuklanmoqda...");
-
-    ocrWorker = await Tesseract.createWorker(sourceLanguage);
-
-    ocrWorkerLanguage = sourceLanguage;
-
-}
-
-// ======================================
-// OCR (TEXT RECOGNITION)
-// ======================================
-
-async function recognizeText(image, onOcrProgress){
-
-    setStatus("Matn aniqlanmoqda...");
-
-    await initOcrWorker();
-
-    const { data } = await ocrWorker.recognize(
-        image,
-        {
-            logger: (m) => {
-
-                if(m.status === "recognizing text" && typeof onOcrProgress === "function"){
-
-                    onOcrProgress(m.progress);
-
-                }
-
-            }
-        },
-        { blocks: true, text: true }
-    );
-
-    return data;
-
-}
-
-// Paragraflarni ajratib olish: { text, confidence, minWordConfidence, bbox }
-function extractParagraphs(data, scale = 1){
-
-    const paragraphs = [];
-
-    if(data.blocks && data.blocks.length > 0){
-
-        for(const block of data.blocks){
-
-            if(!block.paragraphs) continue;
-
-            for(const para of block.paragraphs){
-
-                const text = cleanOcrText(para.text || "");
-
-                if(text === "") continue;
-
-                paragraphs.push({
-                    text,
-                    confidence: sanitizeConfidence(para.confidence),
-                    minWordConfidence: computeMinWordConfidence(para),
-                    bbox: para.bbox || null
-                });
-
-            }
-
-        }
-
-    }
-
-    if(paragraphs.length === 0 && data.text && data.text.trim() !== ""){
-
-        paragraphs.push({
-            text: cleanOcrText(data.text),
-            confidence: sanitizeConfidence(data.confidence),
-            minWordConfidence: null,
-            bbox: null
-        });
-
-    }
-
-    return sortParagraphsByReadingOrder(paragraphs, scale);
-
-}
-
-// ======================================
-// TRANSLATE
-// ======================================
-
-// ---- Tarjima provayderlari: Google (asosiy) -> MyMemory (zaxira) ----
-// Google norasmiy endpoint vaqti-vaqti bilan 429/503 qaytarishi yoki
-// butunlay bloklanishi mumkin. Shuning uchun bitta provayderga
-// bog'lanib qolmaslik uchun zaxira sifatida MyMemory ham saqlanadi.
-
-function buildGoogleTranslateUrl(text){
-
-    return `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLanguage}&tl=${targetLanguage}&dt=t&q=${encodeURIComponent(text)}`;
-
-}
-
-function parseGoogleTranslateResponse(data){
-
-    // Javob formati: [[["tarjima1","original1",...], ["tarjima2","original2",...], ...], ...]
-    if(Array.isArray(data) && Array.isArray(data[0])){
-
-        const translated = data[0]
-            .map((part) => (Array.isArray(part) ? part[0] : ""))
-            .join("");
-
-        if(translated.trim() !== ""){
-            return translated;
-        }
-
-    }
-
-    return null;
-
-}
-
-function buildMyMemoryUrl(text){
-
-    return `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLanguage}|${targetLanguage}`;
-
-}
-
-function parseMyMemoryResponse(data){
-
-    if(
-        data.responseData &&
-        data.responseData.translatedText &&
-        data.responseData.translatedText.trim() !== ""
-    ){
-        return data.responseData.translatedText;
-    }
-
-    return null;
-
-}
-
-async function fetchJsonWithTimeout(url, timeoutMs){
-
+// Fetch timeout bilan
+async function fetchWithTimeout(resource, options = {}) {
+    const { timeout = CONFIG.FETCH_TIMEOUT_MS } = options;
     const controller = new AbortController();
-
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try{
-
-        const response = await fetch(url, { signal: controller.signal });
-
-        clearTimeout(timeoutId);
-
-        if(!response.ok){
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-        return await response.json();
-
-    }catch(error){
-
-        clearTimeout(timeoutId);
-
-        throw error;
-
+    const id = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+        const response = await fetch(resource, {
+            ...options,
+            signal: options.signal || controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (err) {
+        clearTimeout(id);
+        throw err;
     }
-
 }
 
-// Bitta provayderni retry bilan sinab ko'rish. Barcha urinishlar
-// tugasa, xatoni yuqoriga (chaqiruvchiga) tashlaydi - shunda
-// translateChunk() keyingi provayderga o'tishi mumkin.
-async function translateViaProvider(text, buildUrl, parseResponse, retriesLeft){
+// ======================================
+// SOZLAMALARNI BOSHQARISH
+// ======================================
 
-    try{
-
-        const data = await fetchJsonWithTimeout(buildUrl(text), TRANSLATE_TIMEOUT_MS);
-
-        const result = parseResponse(data);
-
-        if(result !== null){
-            return result;
-        }
-
-        throw new Error("Bo'sh yoki noto'g'ri javob");
-
-    }catch(error){
-
-        console.error("Tarjima provayder xatosi:", error.message);
-
-        if(retriesLeft > 0){
-
-            await sleep(TRANSLATE_RETRY_DELAY_MS);
-
-            return translateViaProvider(text, buildUrl, parseResponse, retriesLeft - 1);
-
-        }
-
-        throw error;
-
-    }
-
+function setSourceLanguage(lang, element) {
+    state.sourceLang = lang;
+    updateActiveButton(element);
 }
 
-async function translateChunk(text){
+function setTargetLanguage(lang, element) {
+    state.targetLang = lang;
+    updateActiveButton(element);
+}
 
-    try{
+function setFont(fontType, element) {
+    state.fontFamily = fontType;
+    document.body.classList.remove("font-manga", "font-handwritten");
+    
+    if (fontType === "manga") {
+        document.body.classList.add("font-manga");
+    } else if (fontType === "handwritten") {
+        document.body.classList.add("font-handwritten");
+    }
+    updateActiveButton(element);
+}
 
-        return await translateViaProvider(
-            text,
-            buildGoogleTranslateUrl,
-            parseGoogleTranslateResponse,
-            TRANSLATE_MAX_RETRIES
-        );
+function updateActiveButton(activeBtn) {
+    if (!activeBtn || !activeBtn.parentElement) return;
+    const buttons = activeBtn.parentElement.querySelectorAll("button");
+    buttons.forEach((btn) => btn.classList.remove("active"));
+    activeBtn.classList.add("active");
+}
 
-    }catch(googleError){
-
-        log("Google Translate ishlamadi, MyMemory zaxira provayderga o'tilmoqda...");
-
-        try{
-
-            return await translateViaProvider(
-                text,
-                buildMyMemoryUrl,
-                parseMyMemoryResponse,
-                TRANSLATE_MAX_RETRIES
-            );
-
-        }catch(myMemoryError){
-
-            console.error("Barcha tarjima provayderlari ishlamadi, original matn qaytarilmoqda.");
-
-            return text;
-
+// Event Listeners
+if (DOM.pdfInput) {
+    DOM.pdfInput.addEventListener("change", (e) => {
+        state.files = Array.from(e.target.files);
+        if (state.files.length > 0) {
+            setStatus(`${state.files.length} ta fayl tanlandi.`);
+            if (DOM.goBtn) DOM.goBtn.disabled = false;
+        } else {
+            setStatus("Fayl tanlanmagan");
+            if (DOM.goBtn) DOM.goBtn.disabled = true;
         }
-
-    }
-
+    });
 }
 
-async function translateText(text){
-
-    text = (text ?? "").trim();
-
-    if(text === ""){
-        return "";
-    }
-
-    const cacheKey = normalizeForCache(text);
-
-    if(translationCache.has(cacheKey)){
-        return translationCache.get(cacheKey);
-    }
-
-    setStatus("Tarjima qilinmoqda...");
-
-    const translated = await translateChunk(text);
-
-    translationCache.set(cacheKey, translated);
-
-    return translated;
-
-}
-
-// Uzun matnni jumlalarga (kerak bo'lsa yana bo'laklarga) bo'lib tarjima qilish,
-// original probel/yangi-qator formatini saqlagan holda.
-async function translateLongText(text){
-
-    if(text.length <= MAX_CHUNK_LENGTH){
-
-        return translateText(text);
-
-    }
-
-    const sentences = splitIntoSentences(text);
-
-    const translatedParts = [];
-
-    for(const sentence of sentences){
-
-        const trimmedSentence = sentence.trim();
-
-        if(trimmedSentence === "") continue;
-
-        const trailingWhitespace = sentence.slice(sentence.trimEnd().length);
-
-        const separator = trailingWhitespace.includes("\n") ? "\n" : " ";
-
-        let translatedSentence;
-
-        if(trimmedSentence.length > MAX_CHUNK_LENGTH){
-
-            // Bitta jumlaning o'zi ham juda uzun - so'zlar bo'yicha yana bo'lamiz
-            const subChunks = splitLongChunk(trimmedSentence, MAX_CHUNK_LENGTH);
-
-            const subTranslated = [];
-
-            for(const chunk of subChunks){
-
-                subTranslated.push(await translateText(chunk));
-
+// Share & Image Download Eventlar
+if (DOM.shareBtn) {
+    DOM.shareBtn.addEventListener("click", async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Kage Translate',
+                    text: 'Manga tarjimasi tayyor!',
+                    url: window.location.href,
+                });
+            } catch (err) {
+                console.log('Ulashish bekor qilindi');
             }
+        } else {
+            showToast("Brauzeringiz ulashishni qo'llab-quvvatlamaydi");
+        }
+    });
+}
 
-            translatedSentence = subTranslated.join(" ");
+// Confirm Modal
+function showConfirm(msg, onYes) {
+    if (!DOM.confirmModal) return;
+    DOM.confirmMessage.textContent = msg;
+    DOM.confirmModal.classList.remove("hidden");
+    DOM.overlay.classList.remove("hidden");
+    
+    DOM.confirmYes.onclick = () => {
+        DOM.confirmModal.classList.add("hidden");
+        DOM.overlay.classList.add("hidden");
+        onYes();
+    };
+    DOM.confirmNo.onclick = () => {
+        DOM.confirmModal.classList.add("hidden");
+        DOM.overlay.classList.add("hidden");
+    };
+}
 
-        }else{
+// ======================================
+// OCR WORKER (Boshqaruv & Terminate)
+// ======================================
 
-            translatedSentence = await translateText(trimmedSentence);
+async function getOcrWorker() {
+    const langMap = { en: "eng", ru: "rus", uz: "uzb" };
+    const requiredLang = langMap[state.sourceLang] || "eng";
 
+    // Agar worker mavjud bo'lsa-yu, tili o'zgargan bo'lsa, tozalaymiz
+    if (state.ocrWorker && state.ocrWorkerLang !== requiredLang) {
+        await terminateOcrWorker();
+    }
+
+    if (!state.ocrWorker) {
+        setStatus("OCR dvigateli yuklanmoqda...");
+        state.ocrWorker = await Tesseract.createWorker(requiredLang);
+        state.ocrWorkerLang = requiredLang;
+    }
+    return state.ocrWorker;
+}
+
+async function terminateOcrWorker() {
+    if (state.ocrWorker) {
+        await state.ocrWorker.terminate();
+        state.ocrWorker = null;
+        state.ocrWorkerLang = null;
+    }
+}
+
+async function recognizeText(imageSource) {
+    const worker = await getOcrWorker();
+    const result = await worker.recognize(imageSource);
+    return result.data;
+}
+
+// ======================================
+// TARJIMA ENGINE (Retry + Batch Parallel)
+// ======================================
+
+async function translateSingleText(text) {
+    const cleaned = cleanText(text);
+    if (!cleaned) return "";
+
+    const cacheKey = `${state.sourceLang}_${state.targetLang}_${cleaned}`;
+    if (state.translationCache.has(cacheKey)) {
+        return state.translationCache.get(cacheKey);
+    }
+
+    let translated = null;
+
+    // Retry mexanizmi bilan Google Translate
+    for (let attempt = 0; attempt < CONFIG.TRANSLATE_MAX_RETRIES; attempt++) {
+        if (state.abortController?.signal.aborted) break;
+        try {
+            translated = await translateViaGoogle(cleaned);
+            if (translated) break;
+        } catch (e) {
+            await new Promise(r => setTimeout(r, CONFIG.TRANSLATE_RETRY_DELAY_MS));
+        }
+    }
+
+    // Fallback: MyMemory
+    if (!translated && !state.abortController?.signal.aborted) {
+        translated = await translateViaMyMemory(cleaned);
+    }
+
+    const finalResult = translated || cleaned;
+    addToCache(cacheKey, finalResult);
+    return finalResult;
+}
+
+async function translateViaGoogle(text) {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${state.sourceLang}&tl=${state.targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetchWithTimeout(url, { signal: state.abortController?.signal });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && data[0] ? data[0].map(item => item[0]).join("") : null;
+}
+
+async function translateViaMyMemory(text) {
+    try {
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${state.sourceLang}|${state.targetLang}`;
+        const res = await fetchWithTimeout(url, { signal: state.abortController?.signal });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data?.responseData?.translatedText || null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Batch bo'yicha parallel tarjima qilish
+async function translateBatch(blocks, onProgress) {
+    const results = [];
+    for (let i = 0; i < blocks.length; i += CONFIG.BATCH_SIZE) {
+        if (state.abortController?.signal.aborted) break;
+        
+        const chunk = blocks.slice(i, i + CONFIG.BATCH_SIZE);
+        const chunkPromises = chunk.map(block => {
+            const txt = cleanText(block.text);
+            return txt ? translateSingleText(txt) : Promise.resolve("");
+        });
+
+        const chunkResults = await Promise.all(chunkPromises);
+        results.push(...chunkResults);
+
+        if (onProgress) {
+            onProgress((i + chunk.length) / blocks.length);
+        }
+    }
+    return results;
+           }
+   // ======================================
+// PIPELINE & RENDERING
+// ======================================
+
+function toggleStartCancel() {
+    if (state.isProcessing) {
+        if (state.abortController) {
+            state.abortController.abort();
+            setStatus("Jarayon bekor qilindi.");
+            setProcessingState(false);
+        }
+    } else {
+        startTranslation();
+    }
+}
+
+async function startTranslation() {
+    if (state.files.length === 0) return;
+
+    state.abortController = new AbortController();
+    setProcessingState(true);
+    updateProgress(0);
+
+    clearDOMPreview();
+
+    try {
+        const totalFiles = state.files.length;
+        for (let i = 0; i < totalFiles; i++) {
+            if (state.abortController.signal.aborted) break;
+
+            const file = state.files[i];
+            if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+                await processPdfFile(file);
+            } else if (file.type.startsWith("image/")) {
+                await processImageFile(file);
+            }
         }
 
-        translatedParts.push(translatedSentence + separator);
-
+        if (!state.abortController.signal.aborted) {
+            setStatus("Tarjima muvaffaqiyatli yakunlandi!");
+            showToast("Tarjima tayyor!");
+            if (DOM.downloadPdfBtn) DOM.downloadPdfBtn.disabled = false;
+            if (DOM.downloadBtn) DOM.downloadBtn.classList.remove("hidden");
+            if (DOM.shareBtn) DOM.shareBtn.classList.remove("hidden");
+            updateProgress(100);
+        }
+    } catch (err) {
+        if (err.name !== "AbortError") {
+            console.error(err);
+            showError("Xatolik yuz berdi: " + err.message);
+            setStatus("Xatolik yuz berdi.");
+        }
+    } finally {
+        await terminateOcrWorker(); // Memory Leak oldini olish
+        setProcessingState(false);
     }
+}
 
-    return translatedParts.join("").trim();
+function clearDOMPreview() {
+    if (DOM.results) DOM.results.textContent = "";
+    if (DOM.pdfPreview) DOM.pdfPreview.textContent = "";
+    if (DOM.ocrLayer) DOM.ocrLayer.textContent = "";
+    if (DOM.previewArea) DOM.previewArea.classList.remove("hidden");
+}
 
+async function processPdfFile(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        if (state.abortController?.signal.aborted) break;
+
+        setStatus(`PDF sahifasi ${pageNum}/${pdf.numPages} ishlanmoqda...`);
+
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: CONFIG.PDF_SCALE });
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        if (DOM.pdfPreview) DOM.pdfPreview.appendChild(canvas);
+
+        // OCR jarayoni (Words orqali aniqroq bloklar olinadi)
+        const ocrData = await recognizeText(canvas);
+        const blocks = ocrData.blocks || ocrData.paragraphs || ocrData.lines || [];
+
+        // Tarjima
+        const translatedTexts = await translateBatch(blocks, (p) => {
+            const pageProgress = ((pageNum - 1) + p) / pdf.numPages * 100;
+            updateProgress(pageProgress);
+        });
+
+        // DOM ga xavfsiz chiqarish
+        renderBlocksSafely(blocks, translatedTexts, viewport.width, viewport.height);
+
+        // Xotirani darhol bo'shatish
+        page.cleanup();
+    }
+}
+
+async function processImageFile(file) {
+    setStatus("Rasm qayta ishlanmoqda...");
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    await new Promise((res, rej) => {
+        img.onload = res;
+        img.onerror = rej;
+        img.src = url;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+
+    if (DOM.pdfPreview) DOM.pdfPreview.appendChild(canvas);
+
+    const ocrData = await recognizeText(canvas);
+    const blocks = ocrData.blocks || ocrData.paragraphs || ocrData.lines || [];
+
+    const translatedTexts = await translateBatch(blocks, (p) => {
+        updateProgress(p * 100);
+    });
+
+    renderBlocksSafely(blocks, translatedTexts, img.width, img.height);
+
+    // RAM tozalash
+    URL.revokeObjectURL(url);
+    img.remove();
+}
+
+// Security: innerHTML o'rniga textContent
+function renderBlocksSafely(blocks, translations, renderWidth, renderHeight) {
+    if (!DOM.ocrLayer || !DOM.results) return;
+
+    // Bounding Box hisoblash uchun konteynyer nisbati
+    const containerWidth = DOM.pdfPreview.clientWidth || renderWidth;
+    const scaleFactor = containerWidth / renderWidth;
+
+    blocks.forEach((block, index) => {
+        const translated = translations[index];
+        const originalText = cleanText(block.text);
+        if (!originalText || !translated) return;
+
+        // 1. Matnli Card chiqarish (XSS protection)
+        const card = document.createElement("div");
+        card.className = "card";
+        card.style.marginTop = "8px";
+
+        const origP = document.createElement("p");
+        origP.className = "result-card-text";
+        origP.textContent = originalText;
+
+        const transP = document.createElement("p");
+        transP.className = "result-card-translated manga-text";
+        transP.textContent = translated;
+
+        card.appendChild(origP);
+        card.appendChild(transP);
+        DOM.results.appendChild(card);
+
+        // 2. OCR Layer (Overlay Bubble) joylash
+        if (block.bbox) {
+            const box = block.bbox;
+            const bubble = document.createElement("div");
+            bubble.className = "ocr-bubble-text manga-text";
+            
+            // Scaled Koordinatalar
+            bubble.style.left = `${box.x0 * scaleFactor}px`;
+            bubble.style.top = `${box.y0 * scaleFactor}px`;
+            bubble.style.width = `${(box.x1 - box.x0) * scaleFactor}px`;
+            bubble.style.height = `${(box.y1 - box.y0) * scaleFactor}px`;
+            bubble.textContent = translated;
+
+            DOM.ocrLayer.appendChild(bubble);
+        }
+    });
 }
 
 // ======================================
-// DOM RENDER HELPERS
+// PDF EXPORT (Overlay bilan birga)
 // ======================================
 
-function createMessageCard(message, extraClass){
-
-    const card = document.createElement("div");
-
-    card.className = "card" + (extraClass ? " " + extraClass : "");
-
-    const p = document.createElement("p");
-
-    p.textContent = message;
-
-    card.appendChild(p);
-
-    return card;
-
-}
-
-function createPageCard(titleText){
-
-    const card = document.createElement("div");
-
-    card.className = "card";
-
-    const h3 = document.createElement("h3");
-
-    h3.textContent = titleText;
-
-    card.appendChild(h3);
-
-    return card;
-
-}
-
-function createParagraphBlock(index, original, translated, confidence){
-
-    const lowConfidence = confidence !== null && confidence < LOW_CONFIDENCE_THRESHOLD;
-
-    const wrapper = document.createElement("div");
-
-    wrapper.className = "paragraph-block" + (lowConfidence ? " low-confidence" : "");
-
-    const indexEl = document.createElement("div");
-
-    indexEl.className = "paragraph-index";
-
-    indexEl.textContent = `#${index}`;
-
-    wrapper.appendChild(indexEl);
-
-    if(lowConfidence){
-
-        const badge = document.createElement("span");
-
-        badge.className = "badge-warning";
-
-        badge.textContent = `⚠️ past aniqlik (${Math.round(confidence)}%)`;
-
-        wrapper.appendChild(badge);
-
-    }
-
-    const originalP = document.createElement("p");
-
-    originalP.className = "original-text";
-
-    const originalLabel = document.createElement("strong");
-
-    originalLabel.textContent = "Original: ";
-
-    originalP.appendChild(originalLabel);
-
-    originalP.appendChild(document.createTextNode(original));
-
-    wrapper.appendChild(originalP);
-
-    const translatedP = document.createElement("p");
-
-    translatedP.className = `translated-text font-${selectedFont}`;
-
-    const translatedLabel = document.createElement("strong");
-
-    translatedLabel.textContent = "Tarjima: ";
-
-    translatedP.appendChild(translatedLabel);
-
-    translatedP.appendChild(document.createTextNode(translated));
-
-    wrapper.appendChild(translatedP);
-
-    return wrapper;
-
-}
-
-function createEmptyNote(message){
-
-    const p = document.createElement("p");
-
-    p.className = "empty-note";
-
-    p.textContent = message;
-
-    return p;
-
-}
-
-async function translateAndRenderParagraphs(paragraphs, itemIndex, totalItems){
-
-    const fragment = document.createDocumentFragment();
-
-    if(paragraphs.length === 0){
-
-        fragment.appendChild(createEmptyNote("Matn topilmadi."));
-
-        updateOverallProgress(itemIndex, totalItems, 1);
-
-        return fragment;
-
-    }
-
-    for(let i = 0; i < paragraphs.length; i++){
-
-        const para = paragraphs[i];
-
-        const translated = await translateLongText(para.text);
-
-        const effectiveConfidence = para.minWordConfidence ?? para.confidence ?? null;
-
-        fragment.appendChild(
-            createParagraphBlock(i + 1, para.text, translated, effectiveConfidence)
-        );
-
-        const translateFraction = (i + 1) / paragraphs.length;
-
-        updateOverallProgress(
-            itemIndex,
-            totalItems,
-            OCR_PROGRESS_WEIGHT + translateFraction * TRANSLATE_PROGRESS_WEIGHT
-        );
-
-    }
-
-    return fragment;
-
-}
-
-// ======================================
-// PROCESS PDF (har sahifa alohida himoyalangan)
-// ======================================
-
-async function processPdf(file){
-
-    const pdf = await readPdf(file);
-
-    if(pdf === null){
+async function downloadTranslatedPdf() {
+    if (!window.jspdf) {
+        showError("jsPDF kutubxonasi yuklanmagan!");
         return;
     }
 
-    for(let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++){
+    const { jsPDF } = window.jspdf;
+    const canvases = DOM.pdfPreview ? DOM.pdfPreview.querySelectorAll("canvas") : [];
 
-        const pageIndex = pageNumber - 1;
-
-        let page = null;
-
-        let canvas = null;
-
-        let context = null;
-
-        try{
-
-            setStatus(`Sahifa ${pageNumber}/${pdf.numPages} o'qilmoqda...`);
-
-            page = await pdf.getPage(pageNumber);
-
-            let paragraphs;
-
-            const textLayerText = await getPdfTextLayer(page);
-
-            if(textLayerText){
-
-                log(`Sahifa ${pageNumber}: matn qatlami topildi, OCR o'tkazib yuborildi.`);
-
-                paragraphs = textLayerText
-                    .split("\n")
-                    .map((t) => cleanOcrText(t))
-                    .filter((t) => t !== "")
-                    .map((t) => ({
-                        text: t,
-                        confidence: null,
-                        minWordConfidence: null,
-                        bbox: null
-                    }));
-
-                updateOverallProgress(pageIndex, pdf.numPages, OCR_PROGRESS_WEIGHT);
-
-            }else{
-
-                const scale = getRenderScale(page);
-
-                const viewport = page.getViewport({ scale });
-
-                canvas = document.createElement("canvas");
-
-                context = canvas.getContext("2d");
-
-                canvas.width = viewport.width;
-
-                canvas.height = viewport.height;
-
-                await page.render({
-
-                    canvasContext: context,
-
-                    viewport: viewport
-
-                }).promise;
-
-                log(`Sahifa tayyor: ${pageNumber} (scale=${scale})`);
-
-                const textData = await recognizeText(canvas, (ocrFraction) => {
-
-                    updateOverallProgress(pageIndex, pdf.numPages, ocrFraction * OCR_PROGRESS_WEIGHT);
-
-                });
-
-                paragraphs = extractParagraphs(textData, scale);
-
-            }
-
-            log(`Sahifa ${pageNumber}: ${paragraphs.length} ta paragraf topildi.`);
-
-            const pageCard = createPageCard(`Sahifa ${pageNumber}`);
-
-            const fragment = await translateAndRenderParagraphs(paragraphs, pageIndex, pdf.numPages);
-
-            pageCard.appendChild(fragment);
-
-            if(resultArea){
-                resultArea.appendChild(pageCard);
-            }
-
-        }catch(error){
-
-            console.error(`Sahifa ${pageNumber} da xato:`, error);
-
-            if(resultArea){
-
-                resultArea.appendChild(
-                    createMessageCard(
-                        `Sahifa ${pageNumber} ni qayta ishlashda xato yuz berdi. Qolgan sahifalar davom etmoqda.`,
-                        "card-error"
-                    )
-                );
-
-            }
-
-            updateOverallProgress(pageIndex, pdf.numPages, 1);
-
-        }finally{
-
-            if(canvas){
-                canvas.width = 0;
-                canvas.height = 0;
-            }
-
-            context = null;
-
-            if(page){
-                page.cleanup();
-            }
-
-        }
-
+    if (canvases.length === 0) {
+        showError("Yuklab olish uchun rasm topilmadi.");
+        return;
     }
 
-}
+    setStatus("Eksport uchun PDF tayyorlanmoqda...");
+    const doc = new jsPDF();
 
-// ======================================
-// PROCESS IMAGE
-// ======================================
+    for (let i = 0; i < canvases.length; i++) {
+        if (i > 0) doc.addPage();
 
-async function processImage(file){
+        const srcCanvas = canvases[i];
+        
+        // processingCanvas dan foydalanib background va overlay-ni birlashtiramiz
+        const exportCanvas = DOM.processingCanvas || document.createElement("canvas");
+        exportCanvas.width = srcCanvas.width;
+        exportCanvas.height = srcCanvas.height;
+        const ctx = exportCanvas.getContext("2d");
 
-    try{
+        // 1. Asosiy manga tasvirini chizish
+        ctx.drawImage(srcCanvas, 0, 0);
 
-        const image = await readImage(file);
+        // 2. Bubble text overlay elementlarini canvas ustiga chizish
+        const bubbles = DOM.ocrLayer.querySelectorAll(".ocr-bubble-text");
+        const scaleFactor = srcCanvas.width / (DOM.pdfPreview.clientWidth || srcCanvas.width);
 
-        const textData = await recognizeText(image, (ocrFraction) => {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+        ctx.strokeStyle = "#000000";
+        ctx.fillStyle = "#000000";
+        ctx.font = "bold 16px sans-serif";
+        ctx.textAlign = "center";
 
-            updateOverallProgress(0, 1, ocrFraction * OCR_PROGRESS_WEIGHT);
+        bubbles.forEach(b => {
+            const left = parseFloat(b.style.left) * scaleFactor;
+            const top = parseFloat(b.style.top) * scaleFactor;
+            const width = parseFloat(b.style.width) * scaleFactor;
+            const height = parseFloat(b.style.height) * scaleFactor;
 
+            // Oq fon va ramka
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(left, top, width, height);
+            ctx.strokeRect(left, top, width, height);
+
+            // Matn
+            ctx.fillStyle = "#000000";
+            ctx.fillText(b.textContent, left + width / 2, top + height / 2 + 5, width);
         });
 
-        const paragraphs = extractParagraphs(textData);
+        const imgData = exportCanvas.toDataURL("image/jpeg", 0.85);
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const pdfHeight = (exportCanvas.height * pdfWidth) / exportCanvas.width;
 
-        log(`Rasm: ${paragraphs.length} ta paragraf topildi.`);
-
-        const pageCard = createPageCard("Rasm");
-
-        const fragment = await translateAndRenderParagraphs(paragraphs, 0, 1);
-
-        pageCard.appendChild(fragment);
-
-        if(resultArea){
-            resultArea.appendChild(pageCard);
-        }
-
-    }catch(error){
-
-        console.error("Rasmni qayta ishlashda xato:", error);
-
-        if(resultArea){
-
-            resultArea.appendChild(
-                createMessageCard("Rasmni qayta ishlashda xato yuz berdi.", "card-error")
-            );
-
-        }
-
+        doc.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
     }
 
+    doc.save("Kage_Manga_Translated.pdf");
+    showToast("PDF muvaffaqiyatli saqlandi!");
+    setStatus("Tayyor.");
 }
 
-// ======================================
-// INLINE onclick UCHUN GLOBAL QILISH
-// ======================================
-
-window.startTranslation = startTranslation;
+// Global window funksiyalari
+window.startTranslation = toggleStartCancel;
 window.setSourceLanguage = setSourceLanguage;
 window.setTargetLanguage = setTargetLanguage;
-window.setFont = setFont;                 
+window.setFont = setFont;
+window.closeErrorModal = closeErrorModal;
+window.downloadTranslatedPdf = downloadTranslatedPdf;
