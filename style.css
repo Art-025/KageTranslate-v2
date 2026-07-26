@@ -376,3 +376,45 @@ input[type="file"]::file-selector-button:hover {
         max-width: 860px;
     }
    }
+/* --- Shrift Klasslari Tuzatishi --- */
+body.font-manga,
+body.font-manga .manga-text {
+    font-family: var(--font-manga), sans-serif !important;
+    letter-spacing: 1px;
+}
+
+body.font-handwritten,
+body.font-handwritten .manga-text {
+    font-family: var(--font-handwritten), cursive !important;
+}
+
+/* Overlay matnining fon va joylashuvi */
+.ocr-bubble-text {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.95);
+    color: #000000;
+    border: 1px solid #000000;
+    border-radius: 4px;
+    padding: 2px 4px;
+    box-sizing: border-box;
+    word-break: break-word;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.1;
+    font-size: 11px;
+}
+
+/* Microcard xavfsiz matn */
+.result-card-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.result-card-translated {
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-top: 4px;
+   }
+
