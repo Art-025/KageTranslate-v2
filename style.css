@@ -1,686 +1,378 @@
 /* =========================================
-   Kage Translate
-   style.css
-   Version 2.2
+   Kage Translate - Professional Style
+   ========================================= */
 
-   O'ZGARISHLAR (v2.1 -> v2.2):
-   - .spinner[hidden]{display:none;} - barcha brauzerlarda bir xil
-   - Progress bar ichidagi foiz matni endi ko'rinadi (oq rang)
-   - -webkit-tap-highlight-color, user-select, touch-action - telefon
-     uchun tugma bosish tajribasi yaxshilandi
-   - .card uchun fadeIn animatsiyasi - natijalar silliq paydo bo'ladi
-   - html{scroll-behavior:smooth;}, ::selection rangi
-   - img/canvas uchun oldindan tayyorlangan default (keyingi bosqichda
-     rasm preview/canvas render qo'shilganda darhol to'g'ri ishlaydi)
-   - paragraph-block padding-top 36 -> 42, box-shadow, word-break
-   - #results endi flex+gap orqali joylashadi (ortiqcha bo'shliqsiz)
-   - progress bar border-radius, file input Firefox uchun color:inherit
-========================================= */
-
-@charset "UTF-8";
-
-:root{
-
-    --primary:#c0392b;
-    --primary-dark:#962d22;
-    --bg:#f4efe6;
-    --text:#161311;
-    --card-bg:#ffffff;
-    --card-border:#dddddd;
-    --muted:#666666;
-    --muted-light:#999999;
-    --track-bg:#e0dcd4;
-    --warning:#e0b93c;
-    --warning-bg:#fdf8ea;
-    --warning-text:#40340a;
-    --error-bg:#fdf1ef;
-    --error-text:#962d22;
-
+:root {
+    --bg-color: #161311;
+    --card-bg: #211c18;
+    --primary-color: #ff6b00;
+    --primary-hover: #e05e00;
+    --text-color: #f5f5f7;
+    --text-muted: #a1a1a6;
+    --border-color: #332b25;
+    --error-color: #e74c3c;
+    --warning-color: #f39c12;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-manga: 'Bangers', cursive, sans-serif;
+    --font-handwritten: 'Caveat', cursive, sans-serif;
 }
 
-/* RESET */
-
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-html{
-
-    scroll-behavior:smooth;
-
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
 }
 
-::selection{
-
-    background:var(--primary);
-
-    color:#ffffff;
-
+header {
+    text-align: center;
+    margin-bottom: 24px;
 }
 
-/* BODY */
-
-body{
-
-    background:var(--bg);
-
-    color:var(--text);
-
-    font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
-
-    line-height:1.6;
-
-    max-width:100%;
-    min-height:100vh;
-    overflow-x:hidden;
-
-    -webkit-tap-highlight-color:transparent;
-
+header h1 span {
+    color: var(--primary-color);
 }
 
-/* Kelajakda rasm preview / canvas render qo'shilganda ishlatiladi */
-
-img{
-
-    max-width:100%;
-
-    display:block;
-
+header p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
 }
 
-canvas{
-
-    max-width:100%;
-
-    height:auto;
-
+.app-container {
+    width: 100%;
+    max-width: 650px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-/* HEADER */
-
-header{
-    background:var(--card-bg);
-    border-bottom:4px solid var(--text);
-    padding:25px;
-    text-align:center;
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
 }
 
-header h1{
-    font-size:40px;
-    font-weight:bold;
-    margin-bottom:10px;
+.card h2 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    color: var(--primary-color);
 }
 
-header h1 span{
-    color:var(--primary);
+/* Shriftlar sinfi */
+body.font-manga .manga-text {
+    font-family: var(--font-manga);
+    letter-spacing: 1px;
 }
 
-/* TAGLINE */
-
-header p{
-
-    margin-top:10px;
-
-    color:var(--muted);
-
-    font-size:16px;
-
+body.font-handwritten .manga-text {
+    font-family: var(--font-handwritten);
 }
 
-/* MAIN */
-
-main{
-
-    width:100%;
-    max-width:900px;
-
-    margin:30px auto;
-
-    padding:20px;
-
+/* Button Group */
+.button-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-/* CARD */
-
-.card{
-
-    background:var(--card-bg);
-
-    border:2px solid var(--card-border);
-
-    border-radius:15px;
-
-    padding:20px;
-
-    margin-bottom:20px;
-
-    box-shadow:0 5px 15px rgba(0,0,0,.08);
-
-    transition:box-shadow .2s;
-
-    animation:fadeIn .2s ease;
-
+button {
+    background-color: var(--border-color);
+    color: var(--text-color);
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    flex: 1;
+    min-width: 100px;
+    user-select: none;
 }
 
-.card:hover{
-
-    box-shadow:0 8px 20px rgba(0,0,0,.12);
-
+button:hover:not(:disabled) {
+    background-color: #423830;
 }
 
-@keyframes fadeIn{
+button:active:not(:disabled) {
+    transform: scale(0.97);
+}
 
-    from{
-        opacity:0;
-        transform:translateY(8px);
+button.active {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(255, 107, 0, 0.4);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+button:disabled:hover {
+    background-color: var(--border-color);
+}
+
+/* Universal Focus */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Custom File Input */
+.file-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+input[type="file"] {
+    width: 100%;
+    padding: 8px;
+    background-color: var(--bg-color);
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+input[type="file"]::file-selector-button {
+    background-color: var(--border-color);
+    color: var(--text-color);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    margin-right: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background-color: #423830;
+}
+
+/* Go Button */
+#goBtn {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+    background-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+}
+
+#goBtn:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+}
+
+/* Spinner */
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 12px auto;
+    will-change: transform;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Progress Bar */
+.progress {
+    width: 100%;
+    background-color: var(--bg-color);
+    border-radius: 8px;
+    overflow: hidden;
+    height: 20px;
+    margin-top: 8px;
+}
+
+#progressBar {
+    width: 0%;
+    height: 100%;
+    background-color: var(--primary-color);
+    text-align: center;
+    font-size: 0.75rem;
+    line-height: 20px;
+    color: #fff;
+    transition: width 0.3s ease;
+}
+
+/* Preview Area & Page Container */
+.preview-area {
+    width: 100%;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.page-container {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    margin: 0 auto;
+}
+
+/* Rendering Canvas Optimallashuvi */
+.pdf-preview canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: high-quality;
+}
+
+/* Qatlamlar z-index ierarxiyasi */
+#pdfPreview,
+.pdf-preview {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+}
+
+#ocrLayer,
+.ocr-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    overflow: hidden;
+}
+
+.bubble-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
+    overflow: visible;
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border: 1px solid var(--primary-color);
+    padding: 12px 24px;
+    border-radius: 8px;
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s ease, fadeOut 0.3s ease 2.7s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, 20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translate(-50%, 0); }
+    to { opacity: 0; transform: translate(-50%, 20px); }
+}
+
+/* Modals & Overlay */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 100;
+    backdrop-filter: blur(2px);
+}
+
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 420px;
+    z-index: 101;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+}
+
+.modal h3 {
+    margin-bottom: 12px;
+    color: var(--primary-color);
+}
+
+.modal p {
+    margin-bottom: 20px;
+    color: var(--text-color);
+}
+
+/* Helper Sinflar */
+.hidden {
+    display: none !important;
+}
+
+.divider {
+    border: 0;
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 16px 0;
+}
+
+.offscreen-canvas {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+}
+
+.footer {
+    margin-top: auto;
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+/* Responsivlik */
+@media (min-width: 768px) {
+    .app-container {
+        max-width: 720px;
     }
-
-    to{
-        opacity:1;
-        transform:none;
+    .card {
+        padding: 20px;
     }
-
 }
 
-/* CARD TITLE */
-
-.card h2{
-
-    font-size:20px;
-
-    color:var(--text);
-
-    margin-bottom:15px;
-
-}
-
-/* Xato karta */
-
-.card-error{
-
-    border-color:var(--primary);
-
-    background:var(--error-bg);
-
-}
-
-.card-error p{
-
-    color:var(--error-text);
-
-    font-weight:bold;
-
-}
-
-/* BUTTON */
-
-button{
-
-    width:100%;
-
-    padding:15px;
-
-    border:2px solid transparent;
-
-    border-radius:10px;
-
-    background:var(--primary);
-
-    color:#ffffff;
-
-    font-size:16px;
-
-    font-weight:bold;
-
-    cursor:pointer;
-
-    user-select:none;
-
-    touch-action:manipulation;
-
-    transition:
-        background-color .2s,
-        border-color .2s,
-        transform .1s;
-
-    margin-top:10px;
-
-}
-
-button:not(:disabled):not(.active):hover{
-
-    background:var(--primary-dark);
-
-}
-
-button:active{
-
-    transform:scale(.98);
-
-}
-
-button:focus-visible{
-
-    outline:3px solid var(--primary);
-
-    outline-offset:2px;
-
-}
-
-/* Tanlangan til/font tugmasi */
-
-button.active{
-
-    background:var(--text);
-
-    border-color:var(--primary);
-
-}
-
-button.active::after{
-
-    content:" ✓";
-
-}
-
-button:disabled{
-
-    background:#cccccc;
-
-    color:#888888;
-
-    cursor:not-allowed;
-
-    transform:none;
-
-}
-
-/* FILE INPUT */
-
-input[type="file"]{
-
-    width:100%;
-
-    padding:15px;
-
-    border:2px dashed var(--primary);
-
-    border-radius:10px;
-
-    background:#faf7f2;
-
-    font-size:15px;
-
-    color:inherit;
-
-    cursor:pointer;
-
-    user-select:none;
-
-}
-
-input[type="file"]:focus-visible{
-
-    outline:3px solid var(--primary);
-
-    outline-offset:2px;
-
-}
-
-input[type="file"]::file-selector-button{
-
-    padding:8px 14px;
-
-    margin-right:12px;
-
-    border:none;
-
-    border-radius:8px;
-
-    background:var(--primary);
-
-    color:#ffffff;
-
-    font-weight:bold;
-
-    cursor:pointer;
-
-    transition:background-color .2s;
-
-}
-
-input[type="file"]::file-selector-button:hover{
-
-    background:var(--primary-dark);
-
-}
-
-/* STATUS */
-
-#statusText{
-
-    margin-top:15px;
-
-    font-size:15px;
-
-    color:var(--muted);
-
-}
-
-/* LOADING SPINNER */
-
-.spinner{
-
-    display:block;
-
-    width:32px;
-
-    height:32px;
-
-    margin:15px auto 0;
-
-    border:4px solid var(--track-bg);
-
-    border-top-color:var(--primary);
-
-    border-radius:50%;
-
-    animation:spin 0.8s linear infinite;
-
-}
-
-.spinner[hidden]{
-
-    display:none;
-
-}
-
-@keyframes spin{
-
-    to{
-        transform:rotate(360deg);
+@media (min-width: 1024px) {
+    .app-container {
+        max-width: 860px;
     }
-
-}
-
-/* PROGRESS BAR */
-
-.progress{
-
-    margin-top:15px;
-
-    height:14px;
-
-    background:var(--track-bg);
-
-    border-radius:20px;
-
-    overflow:hidden;
-
-}
-
-#progressBar{
-
-    width:0;
-
-    height:100%;
-
-    min-width:28px;
-
-    background:var(--primary);
-
-    color:#ffffff;
-
-    font-size:11px;
-
-    line-height:14px;
-
-    text-align:center;
-
-    border-radius:20px;
-
-    white-space:nowrap;
-
-    transition:
-        width .2s ease,
-        background-color .2s;
-
-}
-
-/* RESULT AREA */
-
-#results{
-
-    margin-top:10px;
-
-    min-height:100px;
-
-    display:flex;
-
-    flex-direction:column;
-
-    gap:15px;
-
-    scrollbar-color:var(--primary) var(--track-bg);
-
-}
-
-#results > .card{
-
-    margin-bottom:0;
-
-}
-
-#results > p{
-
-    color:var(--muted-light);
-
-    font-style:italic;
-
-    text-align:center;
-
-    padding:20px 0;
-
-}
-
-#results .card h3{
-
-    font-size:18px;
-
-    margin-bottom:12px;
-
-    color:var(--text);
-
-}
-
-/* PARAGRAPH BLOCK */
-
-.paragraph-block{
-
-    position:relative;
-
-    background:#faf7f2;
-
-    border:1px solid #e6e0d5;
-
-    border-radius:10px;
-
-    padding:15px;
-
-    padding-top:42px;
-
-    margin-bottom:12px;
-
-    overflow-wrap:anywhere;
-
-    word-break:break-word;
-
-    box-shadow:0 2px 5px rgba(0,0,0,.05);
-
-}
-
-.paragraph-block.low-confidence{
-
-    border-color:var(--warning);
-
-    background:var(--warning-bg);
-
-}
-
-.paragraph-index{
-
-    position:absolute;
-
-    top:10px;
-
-    left:15px;
-
-    font-size:12px;
-
-    color:#aaaaaa;
-
-    font-weight:bold;
-
-}
-
-.badge-warning{
-
-    position:absolute;
-
-    top:8px;
-
-    right:12px;
-
-    background:var(--warning);
-
-    color:var(--warning-text);
-
-    font-size:12px;
-
-    font-weight:bold;
-
-    padding:3px 8px;
-
-    border-radius:20px;
-
-    white-space:nowrap;
-
-}
-
-.original-text{
-
-    color:var(--muted);
-
-    font-size:15px;
-
-    margin-bottom:8px;
-
-    white-space:pre-wrap;
-
-}
-
-.translated-text{
-
-    color:var(--text);
-
-    font-size:17px;
-
-    white-space:pre-wrap;
-
-}
-
-/* Matn topilmagan sahifalar uchun */
-
-.empty-note{
-
-    color:var(--muted-light);
-
-    font-style:italic;
-
-    text-align:center;
-
-    padding:15px 0;
-
-}
-
-/* FONTLAR (tarjima matni uchun) */
-
-.font-normal{
-
-    font-family:Arial, Helvetica, sans-serif;
-
-}
-
-.font-manga{
-
-    font-family:"Bangers", Impact, sans-serif;
-
-    letter-spacing:0.5px;
-
-    font-size:18px;
-
-}
-
-.font-handwritten{
-
-    font-family:"Caveat", cursive;
-
-    font-size:20px;
-
-}
-
-/* RESPONSIVE - TELEFON UCHUN */
-
-@media(max-width:600px){
-
-    header h1{
-        font-size:30px;
-    }
-
-    header p{
-        font-size:14px;
-    }
-
-    main{
-        padding:12px;
-        margin:15px auto;
-    }
-
-    .card{
-        padding:15px;
-    }
-
-    button{
-        font-size:15px;
-        padding:12px;
-    }
-
-    .translated-text{
-        font-size:16px;
-    }
-
-    .font-manga{
-        font-size:17px;
-    }
-
-    .font-handwritten{
-        font-size:18px;
-    }
-
-}
-
-/* ACCESSIBILITY - animatsiyaga sezgir foydalanuvchilar uchun */
-
-@media(prefers-reduced-motion:reduce){
-
-    *{
-        animation:none !important;
-        transition:none !important;
-    }
-
-    }
+   }
