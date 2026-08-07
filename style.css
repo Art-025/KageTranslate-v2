@@ -1,5 +1,6 @@
 /* =========================================
    Kage Translate - Professional Style
+   Version: dark theme + bubble/confidence additions
    ========================================= */
 
 :root {
@@ -70,6 +71,28 @@ header p {
     color: var(--primary-color);
 }
 
+/* Sound effekt kartasi */
+.card-sfx {
+    border-color: var(--warning-color);
+    background: #2a2117;
+}
+
+/* Past OCR aniqlikdagi karta */
+.card-low-confidence {
+    border-color: var(--warning-color);
+}
+
+.badge-warning {
+    display: inline-block;
+    background: var(--warning-color);
+    color: #2a1c00;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-bottom: 6px;
+}
+
 /* Shriftlar sinfi */
 body.font-manga .manga-text {
     font-family: var(--font-manga);
@@ -98,7 +121,9 @@ button {
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
     flex: 1;
     min-width: 100px;
+    min-height: 48px;
     user-select: none;
+    touch-action: manipulation;
 }
 
 button:hover:not(:disabled) {
@@ -150,6 +175,7 @@ input[type="file"] {
     border-radius: 8px;
     color: var(--text-muted);
     cursor: pointer;
+    min-height: 48px;
 }
 
 input[type="file"]::file-selector-button {
@@ -165,8 +191,7 @@ input[type="file"]::file-selector-button {
 
 input[type="file"]::file-selector-button:hover {
     background-color: #423830;
-}
-
+   }
 /* Go Button */
 #goBtn {
     width: 100%;
@@ -192,6 +217,10 @@ input[type="file"]::file-selector-button:hover {
     will-change: transform;
 }
 
+.spinner.hidden {
+    display: none;
+}
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -213,6 +242,7 @@ input[type="file"]::file-selector-button:hover {
     background-color: var(--primary-color);
     text-align: center;
     font-size: 0.75rem;
+    font-weight: bold;
     line-height: 20px;
     color: #fff;
     transition: width 0.3s ease;
@@ -234,7 +264,6 @@ input[type="file"]::file-selector-button:hover {
     margin: 0 auto;
 }
 
-/* Rendering Canvas Optimallashuvi */
 .pdf-preview canvas {
     display: block;
     max-width: 100%;
@@ -244,7 +273,6 @@ input[type="file"]::file-selector-button:hover {
     image-rendering: high-quality;
 }
 
-/* Qatlamlar z-index ierarxiyasi */
 #pdfPreview,
 .pdf-preview {
     position: relative;
@@ -273,6 +301,60 @@ input[type="file"]::file-selector-button:hover {
     z-index: 3;
     pointer-events: none;
     overflow: visible;
+}
+
+/* Overlay matnining fon va joylashuvi */
+.ocr-bubble-text {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.95);
+    color: #000000;
+    border: 1px solid #000000;
+    border-radius: 14px;
+    padding: 2px 4px;
+    box-sizing: border-box;
+    word-break: break-word;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.1;
+    font-size: 11px;
+    overflow: hidden;
+    /* MUHIM: ota qatlam (.ocr-layer) pointer-events:none bo'lgani uchun,
+       bu yerda qayta yoqilmasa, bubble'lar bosilmaydi va contenteditable
+       ishlamaydi. */
+    pointer-events: auto;
+    cursor: text;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.ocr-bubble-text:hover {
+    box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.4);
+}
+
+.ocr-bubble-text:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color);
+}
+/* Sound effekt bubble - boshqacha fon, burchak yumaloq emas (portlash uslubi) */
+.ocr-bubble-sfx {
+    background-color: rgba(255, 235, 220, 0.95);
+    border-radius: 4px;
+    border-color: var(--warning-color);
+    font-weight: bold;
+}
+
+/* Microcard xavfsiz matn */
+.result-card-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.result-card-translated {
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-top: 4px;
 }
 
 /* Toast Notifications */
@@ -361,6 +443,11 @@ input[type="file"]::file-selector-button:hover {
     font-size: 0.8rem;
 }
 
+::selection {
+    background: var(--primary-color);
+    color: #ffffff;
+}
+
 /* Responsivlik */
 @media (min-width: 768px) {
     .app-container {
@@ -375,7 +462,15 @@ input[type="file"]::file-selector-button:hover {
     .app-container {
         max-width: 860px;
     }
-   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *{
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
 /* --- Shrift Klasslari Tuzatishi --- */
 body.font-manga,
 body.font-manga .manga-text {
@@ -388,33 +483,19 @@ body.font-handwritten .manga-text {
     font-family: var(--font-handwritten), cursive !important;
 }
 
-/* Overlay matnining fon va joylashuvi */
-.ocr-bubble-text {
-    position: absolute;
-    background-color: rgba(255, 255, 255, 0.95);
-    color: #000000;
-    border: 1px solid #000000;
-    border-radius: 4px;
-    padding: 2px 4px;
-    box-sizing: border-box;
-    word-break: break-word;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    line-height: 1.1;
-    font-size: 11px;
+/* Glossary / Lug'at maydoni */
+#glossaryInput:focus-visible,
+#customFontInput:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
-/* Microcard xavfsiz matn */
-.result-card-text {
-    font-size: 0.85rem;
-    color: var(--text-muted);
+#glossaryInput {
+    font-size: 0.9rem;
+    line-height: 1.4;
 }
 
-.result-card-translated {
-    font-weight: bold;
-    color: var(--primary-color);
-    margin-top: 4px;
+#glossaryApplyBtn {
+    width: auto;
+    padding: 8px 16px;
    }
-
