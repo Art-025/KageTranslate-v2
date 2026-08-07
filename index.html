@@ -1,4 +1,4 @@
-DOCTYPE html>
+<!DOCTYPE html>
 <html lang="uz" dir="ltr">
 <head>
     <meta charset="UTF-8">
@@ -45,7 +45,8 @@ DOCTYPE html>
         </div>
         <p>Manga • Manhwa • PDF • Rasm tarjimoni</p>
     </header>
-        <main id="app" class="app-container" role="main" aria-busy="false">
+
+    <main id="app" class="app-container" role="main" aria-busy="false">
 
         <!-- Original til -->
         <section class="card">
@@ -114,7 +115,7 @@ DOCTYPE html>
                 </div>
             </div>
         </section>
-        
+
         <!-- Natija, Preview Area va Eksport -->
         <section class="card">
             <h2>Natija</h2>
@@ -172,7 +173,11 @@ DOCTYPE html>
     <canvas id="processingCanvas" class="offscreen-canvas" hidden></canvas>
     <canvas id="bubbleCanvas" class="offscreen-canvas" hidden></canvas>
 
+    <!-- VAQTINCHALIK: telefon konsolini ko'rish uchun (xato topilgach o'chirib tashlash kerak) -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+
     <script src="main.js"></script>
 
 </body>
-</html>
+                    </html>
