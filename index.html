@@ -1,11 +1,10 @@
-<!DOCTYPE html>
+DOCTYPE html>
 <html lang="uz" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kage Translate</title>
-    
-    <!-- PWA, SEO va Mobil Brauzer Meta Sozlamalari -->
+
     <meta name="theme-color" content="#161311">
     <meta name="msapplication-navbutton-color" content="#161311">
     <meta name="description" content="Kage Translate - Manga va Manhwa PDF tarjimoni">
@@ -14,26 +13,21 @@
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
 
-    <!-- Ilova piktogrammalari -->
     <link rel="icon" href="icon.png">
     <link rel="apple-touch-icon" href="icon-192.png">
-    
-    <!-- Tashqi uslublar paneli va xavfsizlik sozlamalari -->
+
     <link rel="stylesheet" href="style.css">
     <meta name="referrer" content="no-referrer">
 
-    <!-- Manga va Qo'lyozma shriftlari (Google Fonts) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@600&family=Comic+Neue:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
 
-    <!-- PDF.js Kutubxonasi va Core Worker sozlamasi -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     </script>
-    
-    <!-- Tesseract OCR va jsPDF kutubxonalari -->
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -51,8 +45,8 @@
         </div>
         <p>Manga • Manhwa • PDF • Rasm tarjimoni</p>
     </header>
+        <main id="app" class="app-container" role="main" aria-busy="false">
 
-    <main id="app" class="app-container" role="main" aria-busy="false">
         <!-- Original til -->
         <section class="card">
             <h2>Original til</h2>
@@ -80,16 +74,28 @@
                 <button type="button" class="active" onclick="setFont('manga', this)">Manga</button>
                 <button type="button" onclick="setFont('handwritten', this)">Handwritten</button>
             </div>
+
+            <!-- Custom Font (FontFace API) -->
+            <label for="customFontInput" class="file-label" style="margin-top:12px;">Yoki o'z shriftingizni yuklang (.ttf / .otf / .woff)</label>
+            <input type="file" id="customFontInput" accept=".ttf,.otf,.woff,.woff2" autocomplete="off">
         </section>
 
-        <!-- Fayl yuklash qismi -->
+        <!-- Lug'at / Glossary -->
+        <section class="card">
+            <h2>Lug'at (ism va atamalar)</h2>
+            <p class="file-label">Har qatorda bitta atama: <code>Naruto=Naruto</code> yoki <code>Shadow Clone=Kage Bunshin</code></p>
+            <textarea id="glossaryInput" rows="4" placeholder="Naruto=Naruto&#10;Sensei=Ustoz" style="width:100%; background-color:var(--bg-color); color:var(--text-color); border:1px dashed var(--border-color); border-radius:8px; padding:10px; font-family:inherit; resize:vertical;"></textarea>
+            <button type="button" id="glossaryApplyBtn" style="margin-top:8px;">Lug'atni saqlash</button>
+        </section>
+
+        <!-- Fayl yuklash -->
         <section class="card">
             <h2>Fayl yuklash</h2>
             <label for="pdfInput" class="file-label">PDF yoki rasm tanlang</label>
             <input type="file" id="pdfInput" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple autocomplete="off" aria-describedby="statusText">
         </section>
 
-        <!-- Boshlash / To'xtatish tugmasi -->
+        <!-- Boshlash / To'xtatish -->
         <section class="card">
             <button type="button" id="goBtn" onclick="startTranslation()" disabled>
                 Tarjima qilishni boshlash
@@ -101,18 +107,20 @@
             <h2>Holati</h2>
             <p id="statusText">Fayl tanlanmagan</p>
             <div id="loadingSpinner" class="spinner hidden"></div>
-            
+
             <div class="progress">
                 <div id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Tarjima jarayoni progressi" aria-live="polite">
                     0%
                 </div>
             </div>
         </section>
-
+        
         <!-- Natija, Preview Area va Eksport -->
         <section class="card">
             <h2>Natija</h2>
-            
+
+            <p class="file-label">Pufakcha ichidagi matnni bosib tahrirlashingiz mumkin - o'zgarish yuklab olinadigan PDF'ga ham qo'llanadi.</p>
+
             <div id="previewArea" class="preview-area hidden">
                 <div id="pageContainer" class="page-container">
                     <div id="pdfPreview" class="pdf-preview"></div>
@@ -120,12 +128,12 @@
                     <div id="bubbleLayer" class="bubble-layer" aria-hidden="true"></div>
                 </div>
             </div>
-            
+
             <div id="results" aria-live="polite" aria-atomic="false">
                 <p>Hozircha natija yo'q.</p>
             </div>
             <hr class="divider">
-            
+
             <div class="button-group" role="group">
                 <button type="button" id="downloadPdfBtn" onclick="downloadTranslatedPdf()" disabled>
                     📄 Tarjima qilingan PDF-ni yuklab olish
@@ -135,22 +143,18 @@
             </div>
         </section>
 
-        <!-- Yashirin yuklab olish havolasi -->
         <a id="downloadLink" class="hidden" download></a>
     </main>
 
-    <!-- Dinamik bildirishnomalar va UI elementlari -->
     <div id="toast" class="toast hidden" role="alert"></div>
     <div id="overlay" class="overlay hidden"></div>
 
-    <!-- Xatolik Modali -->
     <div id="errorModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="errorTitle">
         <h3 id="errorTitle">Xatolik</h3>
         <p id="errorMessage"></p>
         <button type="button" onclick="closeErrorModal()">Yopish</button>
     </div>
 
-    <!-- Tasdiqlash Modali (Confirm Modal) -->
     <div id="confirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
         <h3 id="confirmTitle">Tasdiqlash</h3>
         <p id="confirmMessage"></p>
@@ -164,13 +168,11 @@
         <p>Kage Translate © 2026</p>
     </footer>
 
-    <!-- Kesh va Processing Canvas-lar (PDF overlay bilan eksport uchun ishlatiladi) -->
     <div id="renderCache" class="hidden" aria-hidden="true"></div>
     <canvas id="processingCanvas" class="offscreen-canvas" hidden></canvas>
     <canvas id="bubbleCanvas" class="offscreen-canvas" hidden></canvas>
 
-    <!-- Asosiy optimallashtirilgan JS kodi -->
     <script src="main.js"></script>
 
 </body>
-    </html>
+</html>
